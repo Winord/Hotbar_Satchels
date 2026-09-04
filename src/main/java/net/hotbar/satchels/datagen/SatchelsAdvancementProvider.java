@@ -111,13 +111,21 @@ public class SatchelsAdvancementProvider implements DataProvider {
         display.addProperty("announce_to_chat", false);
         display.addProperty("hidden", false);
 
+        // Three separate criteria, OR-ed together via requirements:
+        // requirements = [["has_golden_satchel"], ["has_diamond_satchel"], ["has_netherite_satchel"]]
+        // means the advancement fires when ANY ONE of them is met.
         JsonObject criteria = new JsonObject();
-        criteria.add("has_golden_satchel", inventoryChangedCriterion("satchels:satchel_golden"));
+        criteria.add("has_golden_satchel",   inventoryChangedCriterion("satchels:satchel_golden"));
+        criteria.add("has_diamond_satchel",  inventoryChangedCriterion("satchels:satchel_diamond"));
+        criteria.add("has_netherite_satchel", inventoryChangedCriterion("satchels:satchel_netherite"));
 
-        JsonArray req0 = new JsonArray();
-        req0.add("has_golden_satchel");
+        // Each inner array is one AND-group; outer array OR-s them together.
         JsonArray requirements = new JsonArray();
-        requirements.add(req0);
+        for (String name : new String[]{"has_golden_satchel", "has_diamond_satchel", "has_netherite_satchel"}) {
+            JsonArray group = new JsonArray();
+            group.add(name);
+            requirements.add(group);
+        }
 
         JsonObject root = new JsonObject();
         root.add("display", display);

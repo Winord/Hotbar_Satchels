@@ -9,6 +9,26 @@
         ]
       },
       "trigger": "minecraft:inventory_changed"
+    },
+    "has_diamond_satchel": {
+      "conditions": {
+        "items": [
+          {
+            "items": "satchels:satchel_diamond"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_netherite_satchel": {
+      "conditions": {
+        "items": [
+          {
+            "items": "satchels:satchel_netherite"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
     }
   },
   "display": {
@@ -30,6 +50,12 @@
   "requirements": [
     [
       "has_golden_satchel"
+    ],
+    [
+      "has_diamond_satchel"
+    ],
+    [
+      "has_netherite_satchel"
     ]
   ]
 }
