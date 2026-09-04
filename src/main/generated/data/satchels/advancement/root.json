@@ -1,0 +1,35 @@
+{
+  "criteria": {
+    "has_golden_satchel": {
+      "conditions": {
+        "items": [
+          {
+            "items": "satchels:satchel_golden"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "background": "minecraft:textures/gui/advancements/backgrounds/adventure.png",
+    "description": {
+      "translate": "satchels.advancements.root.description"
+    },
+    "frame": "task",
+    "hidden": false,
+    "icon": {
+      "id": "satchels:satchel_golden"
+    },
+    "show_toast": false,
+    "title": {
+      "translate": "satchels.advancements.root.title"
+    }
+  },
+  "requirements": [
+    [
+      "has_golden_satchel"
+    ]
+  ]
+}

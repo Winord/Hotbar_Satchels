@@ -1,0 +1,38 @@
+package net.hotbar.satchels.network.packets;
+
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.hotbar.satchels.Satchels;
+import net.hotbar.satchels.content.satchel.SatchelData;
+import org.jetbrains.annotations.NotNull;
+public record ToggleSatchelPacketC2S(boolean enabled) implements CustomPacketPayload {
+    public static final ResourceLocation ID = Satchels.at("toggle_satchel");
+    public static final CustomPacketPayload.Type<ToggleSatchelPacketC2S> TYPE = new CustomPacketPayload.Type<>(ID);
+    public static final StreamCodec<ByteBuf, ToggleSatchelPacketC2S> STREAM_CODEC = StreamCodec.composite(ByteBufCodecs.BOOL, ToggleSatchelPacketC2S::enabled, ToggleSatchelPacketC2S::new);
+
+    public static void handle(ToggleSatchelPacketC2S packet, ServerPlayer player) {
+        SatchelData satchelData = SatchelData.get(player);
+        if (!satchelData.canAccess()) {
+            satchelData.setActive(false, true);
+        } else {
+            satchelData.setActive(packet.enabled, true);
+            // When toggling ON, push a full inventory snapshot to the client so the
+            // hotbar overlay can render item icons without a container menu being open.
+            // (Vanilla's InventoryMenu broadcastChanges sync only runs while a menu is
+            // open; without this, the client-side SatchelInventory stays empty/stale.)
+            if (packet.enabled) {
+                satchelData.sendInventoryToClient();
+            }
+        }
+    }
+
+    @Override
+    @NotNull
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+}

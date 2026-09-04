@@ -1,0 +1,27 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.hotbar.satchels.mixin",
+  "plugin": "net.hotbar.satchels.mixin.SatchelsMixinPlugin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "GiveCommandMixin",
+    "ItemEntityMixin",
+    "ServerPlaceRecipeMixin",
+    "ServerPlayerMixin",
+    "menu.AbstractContainerMenuMixin",
+    "menu.HorseInventoryMenuMixin",
+    "menu.InventoryMenuMixin",
+    "player.InventoryMixin",
+    "player.PlayerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  },
+  "mixinextras": {
+    "minVersion": "0.5.4"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "satchels",
+  "version": "${version}",
+  "name": "Hotbar Satchels",
+  "description": "Hotbar Expansion",
+  "authors": [
+    "Winord"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/satchels/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.hotbar.satchels.Satchels"
+    ],
+    "client": [
+      "net.hotbar.satchels.client.SatchelsClient"
+    ],
+    "modmenu": [
+      "net.hotbar.satchels.client.config.SatchelsModMenuPlugin"
+    ],
+    "jei_mod_plugin": [
+      "net.hotbar.satchels.compat.recipeviewer.SatchelsJEIPlugin"
+    ],
+    "emi": [
+      "net.hotbar.satchels.compat.recipeviewer.SatchelsEMIPlugin"
+    ],
+    "fabric-datagen": [
+      "net.hotbar.satchels.datagen.SatchelsDataGenerator"
+    ]
+  },
+  "mixins": [
+    "satchels.mixins.json",
+    {
+      "config": "satchels.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "accessWidener": "satchels.accesswidener",
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric-api": "*",
+    "minecraft": "1.21.1",
+    "java": ">=21"
+  },
+  "suggests": {
+    "accessories": "*",
+    "raised": "*",
+    "jei": "*",
+    "emi": "*",
+    "modmenu": "*"
+  },
+  "custom": {
+    "note.satchels-fabric-dev": "Fabric port based on the original Vercte's Satchels (NeoForge)."
+  }
+}

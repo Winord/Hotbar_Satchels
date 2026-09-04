@@ -1,0 +1,35 @@
+{
+  "parent": "satchels:satchel_diamond",
+  "criteria": {
+    "has_satchel_netherite": {
+      "conditions": {
+        "items": [
+          {
+            "items": "satchels:satchel_netherite"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": true,
+    "description": {
+      "translate": "satchels.advancements.netherite.description"
+    },
+    "frame": "challenge",
+    "hidden": false,
+    "icon": {
+      "id": "satchels:satchel_netherite"
+    },
+    "show_toast": true,
+    "title": {
+      "translate": "satchels.advancements.netherite.title"
+    }
+  },
+  "requirements": [
+    [
+      "has_satchel_netherite"
+    ]
+  ]
+}

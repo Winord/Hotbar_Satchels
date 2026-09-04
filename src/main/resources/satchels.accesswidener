@@ -1,0 +1,32 @@
+accessWidener v2 named
+
+# Converted from the original src/main/resources/META-INF/accesstransformer.cfg
+# Field/method descriptors below were written from API knowledge, not verified against a real
+# Minecraft 1.21.1 class tree at conversion time — already confirmed correct by a successful
+# build, but re-check them against the actual mapped jar for any future Minecraft version port.
+
+# public-f net.minecraft.world.inventory.Slot x / y
+# ("-f" in AT = public AND non-final; Slot.x/Slot.y are the slot's GUI coordinates)
+# y was added alongside x for the satchel-toggle-button follow-up fix: SatchelInventorySlot.updateY()
+# slides the item icon vertically in lockstep with the background-sprite tween.
+accessible field net/minecraft/world/inventory/Slot x I
+mutable   field net/minecraft/world/inventory/Slot x I
+accessible field net/minecraft/world/inventory/Slot y I
+mutable   field net/minecraft/world/inventory/Slot y I
+
+# public net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen$SlotWrapper
+accessible class net/minecraft/client/gui/screens/inventory/CreativeModeInventoryScreen$SlotWrapper
+
+# public net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen$SlotWrapper target
+accessible field net/minecraft/client/gui/screens/inventory/CreativeModeInventoryScreen$SlotWrapper target Lnet/minecraft/world/inventory/Slot;
+
+# public net.minecraft.world.inventory.AbstractContainerMenu addSlot(Lnet/minecraft/world/inventory/Slot;)Lnet/minecraft/world/inventory/Slot;
+accessible method net/minecraft/world/inventory/AbstractContainerMenu addSlot (Lnet/minecraft/world/inventory/Slot;)Lnet/minecraft/world/inventory/Slot;
+
+# public net.minecraft.world.entity.Entity firstTick
+accessible field net/minecraft/world/entity/Entity firstTick Z
+
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen leftPos I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen topPos I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageHeight I
+accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageWidth I

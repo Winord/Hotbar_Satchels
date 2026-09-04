@@ -1,0 +1,21 @@
+{
+  "type": "satchels:satchel_upgrade",
+  "category": "equipment",
+  "key": {
+    "d": {
+      "tag": "c:gems/diamond"
+    },
+    "g": {
+      "item": "satchels:satchel_golden"
+    }
+  },
+  "pattern": [
+    " d ",
+    "dgd",
+    " d "
+  ],
+  "result": {
+    "count": 1,
+    "id": "satchels:satchel_diamond"
+  }
+}

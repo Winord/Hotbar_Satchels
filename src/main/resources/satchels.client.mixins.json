@@ -1,0 +1,22 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "net.hotbar.satchels.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "PickBlockMixin",
+    "screen.AbstractContainerScreenMixin",
+    "screen.CreativeModeInventoryScreenMixin",
+    "screen.HorseInventoryScreenMixin",
+    "screen.RecipeBookComponentMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  },
+  "mixinextras": {
+    "minVersion": "0.5.4"
+  }
+}
