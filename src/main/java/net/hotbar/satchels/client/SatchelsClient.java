@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRe
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -23,6 +24,7 @@ import net.hotbar.satchels.SatchelsCommonConfig;
 import net.hotbar.satchels.SatchelsEventHooks;
 import net.hotbar.satchels.client.model.SatchelLayer;
 import net.hotbar.satchels.client.satchel.SatchelHotbarOverlay;
+import net.hotbar.satchels.compat.flashback.FlashbackCompat;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import net.hotbar.satchels.content.satchel.SatchelItem;
 import net.hotbar.satchels.content.satchel.SatchelTier;
@@ -87,6 +89,14 @@ public class SatchelsClient implements ClientModInitializer {
         addEntityRenderLayers();
         registerItemColorHandlers();
         registerExtraModels();
+
+        // Flashback replay mod compat: deferred SatchelSlotUpdatePacketS2C application.
+        // Initialized here (client entrypoint) rather than in SatchelsCompat to avoid
+        // loading an @Environment(CLIENT) class on the dedicated server — enum field
+        // initializers in SatchelsCompat run on both sides at class-load time.
+        if (FabricLoader.getInstance().isModLoaded("flashback")) {
+            new FlashbackCompat().initialize();
+        }
 
         ClientTickEvents.END_CLIENT_TICK.register(SatchelsClient::endClientTick);
         ScreenEvents.BEFORE_INIT.register(SatchelsClient::onScreenOpen);

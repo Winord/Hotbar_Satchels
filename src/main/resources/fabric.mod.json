@@ -50,7 +50,8 @@
     "raised": "*",
     "jei": "*",
     "emi": "*",
-    "modmenu": "*"
+    "modmenu": "*",
+    "flashback": "*"
   },
   "custom": {
     "note.satchels-fabric-dev": "Fabric port based on the original Vercte's Satchels (NeoForge)."

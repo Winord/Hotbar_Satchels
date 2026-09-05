@@ -15,6 +15,7 @@ import net.hotbar.satchels.network.packets.SatchelOffsetUpdatePacketC2S;
 import net.hotbar.satchels.network.packets.SatchelInventorySyncPacketS2C;
 import net.hotbar.satchels.network.packets.SatchelSlotUpdatePacketS2C;
 import net.hotbar.satchels.network.packets.SatchelStatusPacketS2C;
+import net.hotbar.satchels.network.packets.RequestSatchelResyncPacketC2S;
 import net.hotbar.satchels.network.packets.ToggleSatchelPacketC2S;
 
 /**
@@ -38,11 +39,15 @@ public class Satchels implements ModInitializer {
         PayloadTypeRegistry.playS2C().register(SatchelInventorySyncPacketS2C.TYPE, SatchelInventorySyncPacketS2C.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(ToggleSatchelPacketC2S.TYPE, ToggleSatchelPacketC2S.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(SatchelOffsetUpdatePacketC2S.TYPE, SatchelOffsetUpdatePacketC2S.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(RequestSatchelResyncPacketC2S.TYPE, RequestSatchelResyncPacketC2S.STREAM_CODEC);
         ServerPlayNetworking.registerGlobalReceiver(ToggleSatchelPacketC2S.TYPE, (packet, context) ->
                 context.player().server.execute(() -> ToggleSatchelPacketC2S.handle(packet, context.player()))
         );
         ServerPlayNetworking.registerGlobalReceiver(SatchelOffsetUpdatePacketC2S.TYPE, (packet, context) ->
                 context.player().server.execute(() -> SatchelOffsetUpdatePacketC2S.handle(packet, context.player()))
+        );
+        ServerPlayNetworking.registerGlobalReceiver(RequestSatchelResyncPacketC2S.TYPE, (packet, context) ->
+                context.player().server.execute(() -> RequestSatchelResyncPacketC2S.handle(packet, context.player()))
         );
 
         SatchelsCommonConfig.load();
