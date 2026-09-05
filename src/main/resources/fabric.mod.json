@@ -3,7 +3,7 @@
   "id": "satchels",
   "version": "${version}",
   "name": "Hotbar Satchels",
-  "description": "Hotbar Expansion",
+  "description": "Equippable satchels providing extra hotbar storage.",
   "authors": [
     "Winord"
   ],
