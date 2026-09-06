@@ -1,6 +1,6 @@
 # Hotbar Satchels
 
-A Fabric mod for Minecraft 1.21.1 that adds equippable satchels providing extra hotbar storage.
+A Fabric mod for Minecraft that adds equippable satchels providing extra hotbar storage.
 
 ![Minecraft 1.21.1](https://img.shields.io/badge/Minecraft-1.21.1-green)
 ![Fabric](https://img.shields.io/badge/Loader-Fabric-blue)
