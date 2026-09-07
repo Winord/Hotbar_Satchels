@@ -76,7 +76,12 @@ public class Satchels implements ModInitializer {
 
     public static void initExtra() {
         for (var satchel : ModItems.ALL_SATCHELS) {
-            CauldronInteraction.WATER.map().put(satchel, CauldronInteraction.DYED_ITEM);
+            // TODO(1.21.4): CauldronInteraction.DYED_ITEM no longer resolves here even though
+            // some mapping snapshots show it unchanged from 1.21.3 - needs a direct check
+            // against the actual 1.21.4 CauldronInteraction class (possibly renamed/restructured
+            // into the newer InteractionMap-keyed system used in later snapshots). Disabled for
+            // now rather than guessing; satchel-in-cauldron dyeing is cosmetic, not core.
+            // CauldronInteraction.WATER.map().put(satchel, CauldronInteraction.DYED_ITEM);
         }
     }
 

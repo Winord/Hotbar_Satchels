@@ -2,7 +2,7 @@ package net.hotbar.satchels.compat.accessories;
 
 import io.wispforest.accessories.api.AccessoriesCapability;
 import io.wispforest.accessories.api.AccessoriesContainer;
-import io.wispforest.accessories.api.EquipmentChecking;
+import io.wispforest.accessories.api.equip.EquipmentChecking;
 import io.wispforest.accessories.api.events.AccessoryChangeCallback;
 import io.wispforest.accessories.api.events.CanUnequipCallback;
 import io.wispforest.accessories.api.slot.SlotEntryReference;

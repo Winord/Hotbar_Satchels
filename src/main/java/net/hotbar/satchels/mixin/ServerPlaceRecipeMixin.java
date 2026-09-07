@@ -4,7 +4,7 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import net.minecraft.recipebook.ServerPlaceRecipe;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.StackedContents;
+import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeHolder;
@@ -16,16 +16,18 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
 @Mixin(ServerPlaceRecipe.class)
 public class ServerPlaceRecipeMixin {
+    // In 1.21.4, StackedContents was renamed to StackedItemContents.
     @Shadow
     @Final
-    protected StackedContents stackedContents;
+    protected StackedItemContents stackedContents;
 
     @Shadow
     protected Inventory inventory;
 
-    @Inject(method = "recipeClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/RecipeBookMenu;fillCraftSlotsStackedContents(Lnet/minecraft/world/entity/player/StackedContents;)V", shift = At.Shift.AFTER))
+    @Inject(method = "recipeClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/RecipeBookMenu;fillCraftSlotsStackedContents(Lnet/minecraft/world/entity/player/StackedItemContents;)V", shift = At.Shift.AFTER))
     public void satchels$placeWithSatchelContents(ServerPlayer player, RecipeHolder<?> holder, boolean idgaf, CallbackInfo ci) {
         SatchelData satchelData = SatchelData.get(player);
         if (satchelData.canAccess()) satchelData.getSatchelInventory().fillStackedContents(stackedContents);

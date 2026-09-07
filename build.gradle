@@ -34,7 +34,8 @@ repositories {
         name = "su5ed"
         url = "https://maven.su5ed.dev/releases"
     }
-    maven { // JEI
+    maven { // JEI - currently unused while the JEI dependency is disabled for 1.21.4;
+             // left in place for when JEI Fabric support returns at 1.21.5+.
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
     }
@@ -55,15 +56,20 @@ loom {
     }
 
     accessWidenerPath = file("src/main/resources/${mod_id}.accesswidener")
+}
 
-    runs {
-        datagen {
-            inherit server
-            name "Data Generation"
-            vmArg "-Dfabric-api.datagen"
-            vmArg "-Dfabric-api.datagen.output-dir=${file("src/main/generated")}"
-            runDir "build/datagen"
-        }
+// Required for 1.21.4+: model-related datagen classes (BlockModelGenerators,
+// ItemModelGenerators, ModelLocationUtils, FabricModelProvider) moved to the
+// client environment (annotated @Environment(EnvType.CLIENT)). Without client=true
+// they are absent from the compilation classpath and datagen run environment.
+// configureDataGeneration() also registers the "datagen" run config automatically,
+// so the manual loom runs { datagen { ... } } block from 1.21.1 is no longer needed
+// (keeping it alongside configureDataGeneration() causes a "RunConfigSettings with
+// name 'datagen' already exists" conflict at configuration time).
+fabricApi {
+    configureDataGeneration() {
+        client = true
+        outputDirectory = file("src/main/generated")
     }
 }
 
@@ -71,6 +77,13 @@ sourceSets {
     main {
         resources {
             srcDir "src/main/generated"
+        }
+        // JEI/EMI have no Fabric build for 1.21.4 (see gradle.properties for details),
+        // so there's no API artifact to compile these two plugin classes against.
+        // Re-include when porting to 1.21.5+ (JEI) / whenever EMI resumes Fabric builds.
+        java {
+            exclude "net/hotbar/satchels/compat/recipeviewer/SatchelsJEIPlugin.java"
+            exclude "net/hotbar/satchels/compat/recipeviewer/SatchelsEMIPlugin.java"
         }
     }
 }
@@ -81,16 +94,27 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 
+    // Accessories — real Fabric build exists for 1.21.4; bundled normally like on 1.21.1.
     modImplementation "io.wispforest:accessories-fabric:${accessories_version}"
-    modImplementation "maven.modrinth:raised:${raised_version}"
 
-    // JEI — optional integration; compile against API only, runtime for dev runs
-    modCompileOnly "mezz.jei:jei-${minecraft_version}-fabric-api:${jei_version}"
-    modRuntimeOnly "mezz.jei:jei-${minecraft_version}-fabric:${jei_version}"
+    // Raised — NO Fabric build exists for 1.21.4 (only Forge/NeoForge got one in this
+    // window). Compile-only against the last real Fabric artifact so RaisedCompat.java
+    // still compiles; not bundled at runtime. See gradle.properties for details.
+    modCompileOnly "maven.modrinth:raised:${raised_version}"
 
-    // EMI — optional integration; uses :api classifier
-    modCompileOnly "dev.emi:emi-fabric:${emi_version}:api"
-    modRuntimeOnly "dev.emi:emi-fabric:${emi_version}"
+    // JEI — NO Fabric (or common-api/fabric-api) build exists for Minecraft 1.21.4 at
+    // all; mezz dropped Fabric/Forge support for this specific version (NeoForge only).
+    // Disabled entirely: no artifact to even compile against. SatchelsJEIPlugin.java is
+    // excluded from compilation below and its fabric.mod.json entrypoint is removed.
+    // Re-enable for 1.21.5+, where JEI Fabric support returns.
+    // modCompileOnly "mezz.jei:jei-${minecraft_version}-fabric-api:${jei_version}"
+    // modRuntimeOnly "mezz.jei:jei-${minecraft_version}-fabric:${jei_version}"
+
+    // EMI — NO Fabric build exists past 1.21.1 on any loader (development appears to
+    // have stalled there as of publishing this). Disabled entirely for the same reason
+    // as JEI above. SatchelsEMIPlugin.java is excluded from compilation below.
+    // modCompileOnly "dev.emi:emi-fabric:${emi_version}:api"
+    // modRuntimeOnly "dev.emi:emi-fabric:${emi_version}"
 
     // Mod Menu — compile-only; implements ModMenuApi for config screen registration
     modCompileOnly "com.terraformersmc:modmenu:${modmenu_version}"
@@ -105,6 +129,7 @@ dependencies {
 
 processResources {
     inputs.property "version", project.version
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     filesMatching("fabric.mod.json") {
         expand "version": project.version
     }
@@ -118,6 +143,10 @@ java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_21
     targetCompatibility = JavaVersion.VERSION_21
+}
+
+sourcesJar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 jar {

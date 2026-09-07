@@ -65,7 +65,7 @@ public class SatchelUpgradeRecipe extends ShapedRecipe {
 
     @Override
     @NotNull
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<SatchelUpgradeRecipe> getSerializer() {
         return Serializer.INSTANCE;
     }
 

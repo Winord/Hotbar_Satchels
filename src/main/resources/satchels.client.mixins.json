@@ -4,7 +4,6 @@
   "package": "net.hotbar.satchels.mixin.client",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "PickBlockMixin",
     "screen.AbstractContainerScreenMixin",
     "screen.CreativeModeInventoryScreenMixin",
     "screen.HorseInventoryScreenMixin",

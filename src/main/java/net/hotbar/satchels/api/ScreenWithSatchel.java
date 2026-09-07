@@ -2,11 +2,13 @@ package net.hotbar.satchels.api;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.util.FastColor;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.hotbar.satchels.ModTags;
@@ -116,14 +118,14 @@ public class ScreenWithSatchel {
         int satchelTint = SatchelAccess.getSatchelTint(player);
         if (satchelTint != -1) lastColor = satchelTint;
 
-        graphics.setColor(
-                FastColor.ARGB32.red(lastColor) / 255f,
-                FastColor.ARGB32.green(lastColor) / 255f,
-                FastColor.ARGB32.blue(lastColor) / 255f,
-                FastColor.ARGB32.alpha(lastColor) / 255f
+        RenderSystem.setShaderColor(
+                ARGB.red(lastColor) / 255f,
+                ARGB.green(lastColor) / 255f,
+                ARGB.blue(lastColor) / 255f,
+                ARGB.alpha(lastColor) / 255f
         );
-        graphics.blitSprite(sprite.id(), left + 2 + satchelXOffset, top + height - (int) satchelYOffset - 1, sprite.width(), sprite.height());
-        graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        graphics.blitSprite(RenderType::guiTextured, sprite.id(), left + 2 + satchelXOffset, top + height - (int) satchelYOffset - 1, sprite.width(), sprite.height());
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
     }
 
     /**
@@ -231,8 +233,7 @@ public class ScreenWithSatchel {
 
         int x = left + width + (int) slotXOffset - 1;
         int y = top + height - 30;
-        graphics.blitSprite(ModSprites.SATCHEL_SLOT_INVENTORY, x, y, 27, 28);
-        if (slotHeld.isEmpty()) graphics.blitSprite(ModSprites.SATCHEL_SLOT_ICON, x + 5, y + 6, 16, 16);
-        graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        graphics.blitSprite(RenderType::guiTextured, ModSprites.SATCHEL_SLOT_INVENTORY, x, y, 27, 28);
+        if (slotHeld.isEmpty()) graphics.blitSprite(RenderType::guiTextured, ModSprites.SATCHEL_SLOT_ICON, x + 5, y + 6, 16, 16);
     }
 }

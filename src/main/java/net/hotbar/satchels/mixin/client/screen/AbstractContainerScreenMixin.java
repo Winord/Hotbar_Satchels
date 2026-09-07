@@ -66,7 +66,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     public abstract T getMenu();
 
     @Shadow
-    protected abstract Slot findSlot(double pMouseX, double pMouseY);
+    protected abstract Slot getHoveredSlot(double pMouseX, double pMouseY);
 
     /**
      * Prevents throwing an item when clicking on a visible {@code SatchelEquipmentSlot}:
@@ -77,7 +77,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     public boolean satchels$hasClickedOutside(boolean original, double x, double y, int click) {
         if (!original) return false;
 
-        Slot hovered = findSlot(x, y);
+        Slot hovered = getHoveredSlot(x, y);
         if (hovered instanceof SatchelEquipmentSlot satchelSlot && satchelSlot.isShown(Minecraft.getInstance().player, this.getMenu())) {
             return false;
         }
@@ -124,14 +124,14 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         }
     }
 
-    @WrapOperation(method = "findSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isActive()Z"))
+    @WrapOperation(method = "getHoveredSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isActive()Z"))
     public boolean satchels$changeIsActive(Slot slot, Operation<Boolean> original) {
         if (slot instanceof SatchelEquipmentSlot satchelSlot) return satchelSlot.isShown(Minecraft.getInstance().player, this.getMenu());
         if (slot instanceof SatchelInventorySlot && satchels$isSatchelFullyRetractedHere()) return false;
         return original.call(slot);
     }
 
-    @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isActive()Z"))
+    @WrapOperation(method = "renderSlots", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isActive()Z"))
     public boolean satchels$changeIsActiveInRender(Slot slot, Operation<Boolean> original) {
         if (slot instanceof SatchelEquipmentSlot satchelSlot) return satchelSlot.isShown(Minecraft.getInstance().player, this.getMenu());
         if (slot instanceof SatchelInventorySlot && satchels$isSatchelFullyRetractedHere()) return false;
@@ -187,7 +187,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * {@link #satchels$swapWithSatchelSlot}) to a hidden {@code SatchelInventorySlot}.
      * <p>
      * The hotbar-key swap path calls {@code slotClicked} directly with {@code ClickType.SWAP},
-     * bypassing {@code findSlot} entirely — the target satchel slot is encoded in
+     * bypassing {@code getHoveredSlot} entirely — the target satchel slot is encoded in
      * {@code pMouseButton}, so it's resolved separately here.
      * <p>
      * Client-only, unsynced — consistent with the hide toggle never touching

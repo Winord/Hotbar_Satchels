@@ -39,7 +39,7 @@ public class SatchelsEventHooks {
     }
 
     private static void playerClone(ServerPlayer oldPlayer, ServerPlayer newPlayer, boolean alive) {
-        if (oldPlayer.level().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY)) {
+        if (oldPlayer.serverLevel().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY)) {
             ItemStack previous = SatchelData.get(oldPlayer).getSatchelSlotStack();
             SatchelData.get(newPlayer).setSatchelSlotStack(previous.copy());
             SatchelData.get(newPlayer).setActive(SatchelData.get(oldPlayer).isActive(), false);

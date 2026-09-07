@@ -10,7 +10,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.player.StackedContents;
+import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.StackedContentsCompatible;
 import net.minecraft.world.item.ItemStack;
@@ -357,9 +357,9 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
 
     // region StackedContentsCompatible
     @Override
-    public void fillStackedContents(@NotNull StackedContents contents) {
+    public void fillStackedContents(@NotNull StackedItemContents contents) {
         for (ItemStack itemstack : this.items) {
-            contents.accountSimpleStack(itemstack);
+            contents.accountStack(itemstack);
         }
     }
     // endregion

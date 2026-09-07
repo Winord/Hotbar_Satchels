@@ -1,13 +1,15 @@
 package net.hotbar.satchels.client.satchel;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.Util;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FastColor;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -89,11 +91,11 @@ public class SatchelHotbarOverlay {
         if (tier == null) return;
         ModSprites.Sprite hotbarSprite = ModSprites.getHotbarSprite(tier);
 
-        int red = FastColor.ARGB32.red(lastColor);
-        int green = FastColor.ARGB32.green(lastColor);
-        int blue = FastColor.ARGB32.blue(lastColor);
-        int alpha = FastColor.ARGB32.alpha(lastColor);
-        graphics.setColor(
+        int red = ARGB.red(lastColor);
+        int green = ARGB.green(lastColor);
+        int blue = ARGB.blue(lastColor);
+        int alpha = ARGB.alpha(lastColor);
+        RenderSystem.setShaderColor(
                 red / 255f,
                 green / 255f,
                 blue / 255f,
@@ -106,7 +108,7 @@ public class SatchelHotbarOverlay {
         int xOffset = satchelData.getHotbarOffset() * 20;
         // Drawn flush with the vanilla hotbar's left edge — each HOTBAR_SPRITES texture carries
         // its own 1px left border column, see ModSprites for why.
-        graphics.blitSprite(hotbarSprite.id(), x + xOffset, y, hotbarSprite.width(), hotbarSprite.height());
+        graphics.blitSprite(RenderType::guiTextured, hotbarSprite.id(), x + xOffset, y, hotbarSprite.width(), hotbarSprite.height());
 
         int selected = player.getInventory().selected;
         boolean selectedInSatchel = satchelData.isSlotInSatchel(selected);
@@ -124,17 +126,17 @@ public class SatchelHotbarOverlay {
             hsb[2] = Math.min(hsb[2] + 0.1f, 1f);
 
             int rgb = Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]);
-            graphics.setColor(
-                    FastColor.ARGB32.red(rgb) / 255f,
-                    FastColor.ARGB32.green(rgb) / 255f,
-                    FastColor.ARGB32.blue(rgb) / 255f,
+            RenderSystem.setShaderColor(
+                    ARGB.red(rgb) / 255f,
+                    ARGB.green(rgb) / 255f,
+                    ARGB.blue(rgb) / 255f,
                     alpha / 255f
             );
         } else {
-            graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         }
 
-        graphics.blitSprite(selectionSprite, x - 1 + (selected * 20), y - 1, 24, selectedInSatchel ? 24 : 23);
+        graphics.blitSprite(RenderType::guiTextured, selectionSprite, x - 1 + (selected * 20), y - 1, 24, selectedInSatchel ? 24 : 23);
 
         graphics.pose().popPose();
 
@@ -142,7 +144,7 @@ public class SatchelHotbarOverlay {
         // frame is a hollow border, but count text for two-digit stacks overflows the 16x16
         // icon footprint into the frame's border area, and these are 2D GUI blits with no depth
         // testing — draw order alone decides which one wins.
-        graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         for (int i = 0; i < satchelData.getSatchelInventory().getContainerSize(); i++) {
             ItemStack stack = satchelData.getSatchelInventory().getItem(i);
             SatchelRenderUtils.renderSlot(graphics, x + (i * 20) + 3 + xOffset, y + 3, deltaTracker, player, stack, i + 1);

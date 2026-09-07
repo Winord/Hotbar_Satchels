@@ -4,7 +4,6 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
-import net.hotbar.satchels.client.SatchelClientBridge;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
@@ -15,7 +14,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.hotbar.satchels.network.packets.ToggleSatchelPacketC2S;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import net.hotbar.satchels.content.satchel.SatchelInventory;
-import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -148,13 +146,4 @@ public abstract class InventoryMixin {
         ci.cancel();
     }
 
-    @Inject(method = "setPickedItem", at = @At(value = "FIELD", target = "Lnet/minecraft/world/entity/player/Inventory;selected:I", opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER))
-    public void satchels$deselectSatchelIfNeeded(CallbackInfo ci) {
-        SatchelData data = SatchelData.get(player);
-        if (!data.isSlotInSatchel(selected)) return;
-
-        if (!data.isActive()) return;
-        data.setActive(false, true);
-        if (player.level().isClientSide()) SatchelClientBridge.sendToggleOff();
-    }
 }

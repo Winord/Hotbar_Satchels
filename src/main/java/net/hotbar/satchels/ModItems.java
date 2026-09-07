@@ -2,6 +2,7 @@ package net.hotbar.satchels;
 
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.hotbar.satchels.content.satchel.SatchelItem;
@@ -26,8 +27,9 @@ public class ModItems {
 
     private static SatchelItem register(SatchelTier tier) {
         ResourceLocation id = Satchels.at(tier.getItemPath());
-        SatchelItem item = new SatchelItem(tier, new Item.Properties().stacksTo(1));
-        return Registry.register(BuiltInRegistries.ITEM, id, item);
+        ResourceKey<Item> key = ResourceKey.create(BuiltInRegistries.ITEM.key(), id);
+        SatchelItem item = new SatchelItem(tier, new Item.Properties().setId(key).stacksTo(1));
+        return Registry.register(BuiltInRegistries.ITEM, key, item);
     }
 
     /** Called from {@link Satchels#onInitialize()} to force this class to load, triggering

@@ -21,12 +21,6 @@
     "modmenu": [
       "net.hotbar.satchels.client.config.SatchelsModMenuPlugin"
     ],
-    "jei_mod_plugin": [
-      "net.hotbar.satchels.compat.recipeviewer.SatchelsJEIPlugin"
-    ],
-    "emi": [
-      "net.hotbar.satchels.compat.recipeviewer.SatchelsEMIPlugin"
-    ],
     "fabric-datagen": [
       "net.hotbar.satchels.datagen.SatchelsDataGenerator"
     ]
@@ -42,18 +36,16 @@
   "depends": {
     "fabricloader": ">=0.16.0",
     "fabric-api": "*",
-    "minecraft": "1.21.1",
+    "minecraft": "1.21.4",
     "java": ">=21"
   },
   "suggests": {
     "accessories": "*",
-    "raised": "*",
-    "jei": "*",
-    "emi": "*",
     "modmenu": "*",
     "flashback": "*"
   },
   "custom": {
-    "note.satchels-fabric-dev": "Fabric port based on the original Vercte's Satchels (NeoForge)."
+    "note.satchels-fabric-dev": "Fabric port based on the original Vercte's Satchels (NeoForge).",
+    "note.satchels-1.21.4-gaps": "JEI, EMI and Raised have no Fabric build for 1.21.4 - their integrations are disabled/stubbed for this specific build. See gradle.properties and build.gradle for details."
   }
 }

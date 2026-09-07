@@ -8,14 +8,20 @@ import net.minecraft.advancements.AdvancementRequirements;
 import net.minecraft.advancements.AdvancementRewards;
 import net.minecraft.advancements.critereon.RecipeUnlockedTrigger;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.data.recipes.RecipeBuilder;
 import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.data.recipes.RecipeProvider;
 import net.minecraft.data.recipes.ShapedRecipeBuilder;
+import net.minecraft.data.recipes.SmithingTransformRecipeBuilder;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
 import net.hotbar.satchels.ModItems;
 import net.hotbar.satchels.Satchels;
@@ -28,74 +34,107 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Generates crafting recipes for all three satchel tiers.
- * Uses Fabric Convention Tags ({@code c:} namespace) for ingredients — same tags the
- * original NeoForge recipe already relied on.
+ * Uses Fabric Convention Tags ({@code c:} namespace) for ingredients.
  * <p>
- * Tier progression (confirmed with user, dev-brief §11.2.9):
+ * <b>1.21.4 API changes:</b>
  * <ul>
- *   <li><b>Golden</b> — shaped craft (strings, leathers, gold ingot).</li>
- *   <li><b>Diamond</b> — {@link SatchelUpgradeRecipe}: Golden Satchel center + 4 diamonds.
- *       Uses a custom recipe type so dye color is preserved from the input Golden Satchel.</li>
- *   <li><b>Netherite</b> — smithing-table upgrade from Diamond only (Diamond + Netherite
- *       Upgrade Smithing Template + Netherite Ingot). A non-empty Diamond Satchel can't be
- *       unequipped ({@code AccessoriesCompat.canUnequipSatchel}), so it can't be placed in
- *       the smithing ingredient slot either — no extra "must be empty" check needed here.</li>
+ *   <li>{@code FabricRecipeProvider} now requires overriding
+ *       {@code createRecipeProvider(HolderLookup.Provider, RecipeOutput)} returning a
+ *       {@code RecipeProvider} (Mojang mappings name; Yarn calls it {@code RecipeGenerator}).
+ *       The inner method to override is {@code buildRecipes()} (no arguments).</li>
+ *   <li>{@code registries.lookupOrThrow(Registries.ITEM).getOrThrow(tag)} returns
+ *       {@code Named<Item>}, not {@code TagKey<Item>}. Pass {@code .key()} to get the
+ *       {@code TagKey} needed by {@code define(char, TagKey)} and {@code has(TagKey)}.</li>
+ *   <li>{@code SmithingTransformRecipeBuilder.save(RecipeOutput, ResourceLocation)} is
+ *       gone — use {@code save(RecipeOutput, ResourceKey<Recipe<?>>)} instead.</li>
+ *   <li>{@code getName()} is now abstract in {@code DataProvider} and must be overridden.</li>
  * </ul>
- * {@code .save(output)} / {@code output.accept(...)} auto-generates an unlock advancement
- * ({@code advancement/recipes/<category>/<id>.json}) for every recipe.
  */
 public class SatchelsRecipeProvider extends FabricRecipeProvider {
+
     public SatchelsRecipeProvider(FabricDataOutput output, CompletableFuture<HolderLookup.Provider> registriesFuture) {
         super(output, registriesFuture);
     }
 
     @Override
-    public void buildRecipes(@NotNull RecipeOutput output) {
-        ShapedRecipeBuilder.shaped(RecipeCategory.TOOLS, ModItems.SATCHEL_GOLDEN)
-                .pattern(" s ")
-                .pattern("lgl")
-                .pattern("sls")
-                .define('s', ConventionalItemTags.STRINGS)
-                .define('l', ConventionalItemTags.LEATHERS)
-                .define('g', ConventionalItemTags.GOLD_INGOTS)
-                .unlockedBy("has_gold", has(ConventionalItemTags.GOLD_INGOTS))
-                .save(output);
+    public @NotNull RecipeProvider createRecipeProvider(@NotNull HolderLookup.Provider registries,
+                                                        @NotNull RecipeOutput output) {
+        return new RecipeProvider(registries, output) {
+            @Override
+            public void buildRecipes() {
+                var items = registries.lookupOrThrow(Registries.ITEM);
 
-        satchelUpgradeRecipe(
-                output, Satchels.at("satchel_diamond"), RecipeCategory.TOOLS, ModItems.SATCHEL_DIAMOND,
-                List.of(" d ", "dgd", " d "),
-                Map.of('d', Ingredient.of(ConventionalItemTags.DIAMOND_GEMS), 'g', Ingredient.of(ModItems.SATCHEL_GOLDEN)),
-                "has_diamond", has(ConventionalItemTags.DIAMOND_GEMS)
-        );
+                // getOrThrow(TagKey) returns Named<Item>; .key() gives back the TagKey
+                // that define(char, TagKey) and has(TagKey) actually expect.
+                ShapedRecipeBuilder.shaped(items, RecipeCategory.TOOLS, ModItems.SATCHEL_GOLDEN)
+                        .pattern(" s ")
+                        .pattern("lgl")
+                        .pattern("sls")
+                        .define('s', items.getOrThrow(ConventionalItemTags.STRINGS).key())
+                        .define('l', items.getOrThrow(ConventionalItemTags.LEATHERS).key())
+                        .define('g', items.getOrThrow(ConventionalItemTags.GOLD_INGOTS).key())
+                        .unlockedBy("has_gold", has(items.getOrThrow(ConventionalItemTags.GOLD_INGOTS).key()))
+                        .save(output);
 
-        netheriteSmithing(output, ModItems.SATCHEL_DIAMOND, RecipeCategory.TOOLS, ModItems.SATCHEL_NETHERITE);
+                satchelUpgradeRecipe(
+                        output, Satchels.at("satchel_diamond"), RecipeCategory.TOOLS, ModItems.SATCHEL_DIAMOND,
+                        List.of(" d ", "dgd", " d "),
+                        Map.of(
+                                'd', Ingredient.of(items.getOrThrow(ConventionalItemTags.DIAMOND_GEMS)),
+                                'g', Ingredient.of(ModItems.SATCHEL_GOLDEN)
+                        ),
+                        "has_diamond", has(items.getOrThrow(ConventionalItemTags.DIAMOND_GEMS).key())
+                );
+
+                ResourceKey<Recipe<?>> netheriteKey = ResourceKey.create(
+                        Registries.RECIPE, Satchels.at("satchel_netherite_smithing"));
+
+                SmithingTransformRecipeBuilder
+                        .smithing(
+                                Ingredient.of(Items.NETHERITE_UPGRADE_SMITHING_TEMPLATE),
+                                Ingredient.of(ModItems.SATCHEL_DIAMOND),
+                                Ingredient.of(Items.NETHERITE_INGOT),
+                                RecipeCategory.TOOLS,
+                                ModItems.SATCHEL_NETHERITE
+                        )
+                        .unlocks("has_netherite", has(Items.NETHERITE_INGOT))
+                        .save(output, netheriteKey);
+            }
+        };
+    }
+
+    @Override
+    public @NotNull String getName() {
+        return "Satchels Recipes";
     }
 
     /**
-     * Like {@link ShapedRecipeBuilder#save} (including unlock-advancement wiring), but emits a
-     * {@link SatchelUpgradeRecipe} instead of a plain {@code ShapedRecipe} so the output can
-     * carry the dyed ingredient's color. {@link ShapedRecipeBuilder} always produces a vanilla
-     * {@code ShapedRecipe} with no hook to substitute the type, so this reimplements just enough
-     * of its {@code save()} to inject ours instead.
+     * Like {@link ShapedRecipeBuilder#save} but emits a {@link SatchelUpgradeRecipe} instead
+     * of a plain {@code ShapedRecipe} so the output can carry the dyed ingredient's color.
+     * In 1.21.4 recipe advancements use {@code ResourceKey<Recipe<?>>} instead of
+     * {@code ResourceLocation} — derived via {@code ResourceKey.create(Registries.RECIPE, id)}.
      */
     private static void satchelUpgradeRecipe(
-            RecipeOutput output, ResourceLocation id, RecipeCategory category, net.minecraft.world.level.ItemLike result,
+            RecipeOutput output, ResourceLocation id, RecipeCategory category,
+            net.minecraft.world.level.ItemLike result,
             List<String> pattern, Map<Character, Ingredient> key,
             String criterionName, net.minecraft.advancements.Criterion<?> criterion
     ) {
-        ShapedRecipePattern shapedPattern = ShapedRecipePattern.of(key, pattern);
+        ResourceKey<Recipe<?>> recipeKey = ResourceKey.create(Registries.RECIPE, id);
 
         Advancement.Builder advancement = output.advancement()
-                .addCriterion("has_the_recipe", RecipeUnlockedTrigger.unlocked(id))
-                .rewards(AdvancementRewards.Builder.recipe(id))
+                .addCriterion("has_the_recipe", RecipeUnlockedTrigger.unlocked(recipeKey))
+                .rewards(AdvancementRewards.Builder.recipe(recipeKey))
                 .requirements(AdvancementRequirements.Strategy.OR)
                 .addCriterion(criterionName, criterion);
 
+        ShapedRecipePattern shapedPattern = ShapedRecipePattern.of(key, pattern);
         CraftingBookCategory bookCategory = RecipeBuilder.determineBookCategory(category);
         SatchelUpgradeRecipe recipe = new SatchelUpgradeRecipe(
                 "", bookCategory, shapedPattern, new ItemStack(result), true
         );
 
-        output.accept(id, recipe, advancement.build(id.withPrefix("recipes/" + category.getFolderName() + "/")));
+        ResourceLocation advancementId = id.withPrefix("recipes/" + category.getFolderName() + "/");
+        output.accept(recipeKey, recipe, advancement.build(advancementId));
     }
 }

@@ -3,18 +3,14 @@ package net.hotbar.satchels.client.model;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.fabricmc.fabric.api.client.model.loading.v1.FabricBakedModelManager;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.EntityModel;
-import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
 import net.minecraft.client.renderer.entity.layers.RenderLayer;
+import net.minecraft.client.renderer.entity.state.PlayerRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
-import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -26,48 +22,47 @@ import org.jetbrains.annotations.NotNull;
 /**
  * Renders the equipped satchel on the player's back.
  * <p>
- * <b>Fabric vs. NeoForge model resolution:</b> the original (NeoForge) mod resolved the worn
- * model via {@code itemRenderer.renderStatic(player, stack, ItemDisplayContext.HEAD, ...)},
- * relying on a NeoForge-only {@code neoforge:separate_transforms} model loader to redirect the
- * HEAD perspective to a separate worn-model geometry. Fabric has no equivalent loader, so that
- * approach here would just render the flat 2D item icon with the default HEAD transform (like a
- * pumpkin on the head).
+ * <b>1.21.4 render state migration:</b> {@code RenderLayer} now uses
+ * {@code EntityRenderState} as its type parameter instead of the entity directly.
+ * For players, this is {@code PlayerRenderState}. The entity is not available in
+ * {@code render()} — we resolve the live {@code Player} from the client world via
+ * {@code PlayerRenderState.id}, which is an {@code int} (entity network ID, NOT UUID).
+ * Use {@code Level.getEntity(int)} and cast to {@code Player}.
  * <p>
- * Fix: each tier's {@code satchel_worn_<tier>.json} model is registered as an extra model via
- * Fabric's Model Loading API ({@code SatchelsClient} registers a {@code ModelLoadingPlugin}
- * calling {@code context.addModels(...)} for all three tier ids — without this they'd never be
- * baked at all, since nothing else references them). The tier matching the currently-equipped
- * satchel is fetched here as an already-baked {@code BakedModel} via
- * {@code FabricBakedModelManager} and rendered directly through the
- * {@code itemRenderer.render(..., bakedModel)} overload, which skips normal stack-to-model
- * resolution entirely. If porting to NeoForge or a future Fabric API with different model-loading
- * hooks, this whole bypass may no longer be necessary.
+ * <b>ItemRenderer changes in 1.21.4:</b> the old
+ * {@code render(ItemStack, ItemDisplayContext, boolean, PoseStack, MultiBufferSource, int, int, BakedModel)}
+ * overload was removed. The replacement is {@code renderStatic(ItemStack, ItemDisplayContext,
+ * int, int, PoseStack, MultiBufferSource, Level, int)}, which resolves the model internally.
+ * The worn model is still used because it is registered as an extra model in
+ * {@code SatchelsClient#registerExtraModels} and referenced in the item definition JSON
+ * under {@code ItemDisplayContext.HEAD} — {@code renderStatic} with HEAD context picks it up.
+ * The {@code FabricBakedModelManager} import is therefore no longer needed here.
  */
 @Environment(EnvType.CLIENT)
-public class SatchelLayer<T extends LivingEntity, M extends EntityModel<T>> extends RenderLayer<T, M> {
-    private final ItemRenderer itemRenderer;
+public class SatchelLayer extends RenderLayer<PlayerRenderState, PlayerModel> {
 
-    public SatchelLayer(RenderLayerParent<T, M> renderLayerParent, ItemRenderer itemRenderer) {
+    public SatchelLayer(RenderLayerParent<PlayerRenderState, PlayerModel> renderLayerParent) {
         super(renderLayerParent);
-        this.itemRenderer = itemRenderer;
     }
 
     @Override
-    public void render(@NotNull PoseStack poseStack, @NotNull MultiBufferSource buffer, int light, @NotNull T entity, float yaw, float pitch, float partialTicks, float j, float k, float l) {
-        if (!(entity instanceof Player player)) return;
+    public void render(@NotNull PoseStack poseStack, @NotNull MultiBufferSource buffer, int light,
+                       @NotNull PlayerRenderState renderState, float yaw, float pitch) {
         if (!SatchelsClientConfig.shouldRenderSatchel()) return;
+
+        // PlayerRenderState.id is an int (entity network ID), not a UUID.
+        // Use Level.getEntity(int) instead of Level.getPlayerByUUID(UUID).
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        Entity entity = mc.level.getEntity(renderState.id);
+        if (!(entity instanceof Player player)) return;
+
         if (!SatchelAccess.satchelIsVisible(player)) return;
 
-        M entityModel = getParentModel();
-        if (!(entityModel instanceof HumanoidModel<?> model))
-            return;
+        PlayerModel model = getParentModel();
 
         ItemStack satchelStack = SatchelAccess.getSatchelVisualStack(player);
-        if (!(satchelStack.getItem() instanceof SatchelItem satchelItem)) return;
-
-        ResourceLocation wornModelId = satchelItem.getTier().getWornModelId();
-        BakedModel wornModel = ((FabricBakedModelManager) Minecraft.getInstance().getModelManager()).getModel(wornModelId);
-        if (wornModel == null) return;
+        if (!(satchelStack.getItem() instanceof SatchelItem)) return;
 
         poseStack.pushPose();
 
@@ -75,15 +70,18 @@ public class SatchelLayer<T extends LivingEntity, M extends EntityModel<T>> exte
         poseStack.translate(0, 4 / 16f, 0);
         poseStack.scale(-1, -1, 1);
 
-        itemRenderer.render(
+        // render(ItemStack, ..., BakedModel) was removed in 1.21.4.
+        // renderStatic resolves the model from the item definition's HEAD transform,
+        // which maps to the satchel_worn_<tier> model registered via registerExtraModels().
+        mc.getItemRenderer().renderStatic(
                 satchelStack,
                 ItemDisplayContext.HEAD,
-                false,
-                poseStack,
-                buffer,
                 light,
                 OverlayTexture.NO_OVERLAY,
-                wornModel
+                poseStack,
+                buffer,
+                mc.level,
+                0
         );
 
         poseStack.popPose();
