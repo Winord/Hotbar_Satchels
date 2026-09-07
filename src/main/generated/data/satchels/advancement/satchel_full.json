@@ -1,23 +1,23 @@
 {
   "parent": "satchels:satchel_netherite",
+  "criteria": {
+    "satchel_is_full": {
+      "trigger": "minecraft:impossible"
+    }
+  },
   "display": {
-    "icon": {
-      "id": "satchels:satchel_netherite"
-    },
-    "title": {
-      "translate": "satchels.advancements.satchel_full.title"
-    },
+    "announce_to_chat": true,
     "description": {
       "translate": "satchels.advancements.satchel_full.description"
     },
     "frame": "goal",
+    "hidden": false,
+    "icon": {
+      "id": "satchels:satchel_netherite"
+    },
     "show_toast": true,
-    "announce_to_chat": true,
-    "hidden": false
-  },
-  "criteria": {
-    "satchel_is_full": {
-      "trigger": "minecraft:impossible"
+    "title": {
+      "translate": "satchels.advancements.satchel_full.title"
     }
   },
   "requirements": [

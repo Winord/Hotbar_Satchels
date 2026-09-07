@@ -28,7 +28,9 @@ public class ModItems {
     private static SatchelItem register(SatchelTier tier) {
         ResourceLocation id = Satchels.at(tier.getItemPath());
         ResourceKey<Item> key = ResourceKey.create(BuiltInRegistries.ITEM.key(), id);
-        SatchelItem item = new SatchelItem(tier, new Item.Properties().setId(key).stacksTo(1));
+        SatchelItem item = new SatchelItem(tier, new Item.Properties().setId(key).stacksTo(1)
+                .component(net.minecraft.core.component.DataComponents.DYED_COLOR,
+                        new net.minecraft.world.item.component.DyedItemColor(SatchelItem.DEFAULT_COLOR, false)));
         return Registry.register(BuiltInRegistries.ITEM, key, item);
     }
 

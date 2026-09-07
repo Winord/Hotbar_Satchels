@@ -99,6 +99,12 @@ public class SatchelsRecipeProvider extends FabricRecipeProvider {
                         )
                         .unlocks("has_netherite", has(Items.NETHERITE_INGOT))
                         .save(output, netheriteKey);
+
+                // Satchel dyeing — replaces color instead of blending (see SatchelDyeRecipe)
+                ResourceKey<Recipe<?>> dyeKey = ResourceKey.create(Registries.RECIPE, Satchels.at("satchel_dye"));
+                output.accept(dyeKey,
+                        new net.hotbar.satchels.content.satchel.SatchelDyeRecipe(CraftingBookCategory.EQUIPMENT),
+                        null);
             }
         };
     }

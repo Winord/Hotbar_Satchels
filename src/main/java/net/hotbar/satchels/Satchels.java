@@ -33,6 +33,9 @@ public class Satchels implements ModInitializer {
         ModItems.register();
         ModSounds.register();
         ModRecipeSerializers.register();
+        net.fabricmc.fabric.api.entity.event.v1.ServerEntityWorldChangeEvents.AFTER_PLAYER_CHANGE_WORLD
+                .register((player, origin, destination) ->
+                        net.hotbar.satchels.content.satchel.SatchelData.get(player).resyncToClient());
 
         PayloadTypeRegistry.playS2C().register(SatchelSlotUpdatePacketS2C.TYPE, SatchelSlotUpdatePacketS2C.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(SatchelStatusPacketS2C.TYPE, SatchelStatusPacketS2C.STREAM_CODEC);
