@@ -1,4 +1,4 @@
-accessWidener v2 named
+accessWidener v2 official
 
 # Converted from the original src/main/resources/META-INF/accesstransformer.cfg
 # Field/method descriptors below were written from API knowledge, not verified against a real
@@ -30,3 +30,27 @@ accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScr
 accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen topPos I
 accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageHeight I
 accessible field net/minecraft/client/gui/screens/inventory/AbstractContainerScreen imageWidth I
+
+# --- Added for 26.1 port, triage group D (satchels-26_1-build-errors-triage.md) ---
+# These are genuine 26.1 visibility changes, not stale mappings: InventoryMixin.java already
+# @Shadow's both `selected` and `items` from *inside* a mixin targeting Inventory (which works
+# at the bytecode level regardless of visibility), while every OTHER class that touches these
+# fields as plain Java field access needs them opened via AW. On 1.21.1 no AW entry was needed
+# here, which means these three members were public in Mojang's own 1.21.1 code and became
+# private in 26.1 — confirmed hypothesis, not yet build-verified (no `./gradlew build` access
+# in this environment). Re-run the build after this change; if `selected`/`items`/`server`
+# still error, the descriptor below (not the concept) is what's wrong — paste the real
+# Inventory/ServerPlayer class from the IDE rather than guessing again.
+accessible field net/minecraft/world/entity/player/Inventory selected I
+mutable   field net/minecraft/world/entity/player/Inventory selected I
+accessible field net/minecraft/world/entity/player/Inventory items Lnet/minecraft/core/NonNullList;
+accessible field net/minecraft/server/level/ServerPlayer server Lnet/minecraft/server/MinecraftServer;
+
+# --- Added for 26.1 port, group H (Satchels.java CauldronInteractions.WATER.put) ---
+# Confirmed via javap against the real 26.1.2 merged jar: CauldronInteraction.Dispatcher moved
+# package (net.minecraft.world.level.block -> net.minecraft.core.cauldron) AND both put(...)
+# overloads are package-private (no modifier), not public — this is a genuine 26.1 visibility
+# change, not a stale mapping. Only the Item overload is used by Satchels.java today; the TagKey
+# overload is opened too in case a future tier-wide cauldron rule is added via ModTags.SATCHEL.
+accessible method net/minecraft/core/cauldron/CauldronInteraction$Dispatcher put (Lnet/minecraft/world/item/Item;Lnet/minecraft/core/cauldron/CauldronInteraction;)V
+accessible method net/minecraft/core/cauldron/CauldronInteraction$Dispatcher put (Lnet/minecraft/tags/TagKey;Lnet/minecraft/core/cauldron/CauldronInteraction;)V

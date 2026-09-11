@@ -2,7 +2,7 @@ package net.hotbar.satchels.datagen;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import net.fabricmc.fabric.api.datagen.v1.FabricDataOutput;
+import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
@@ -33,9 +33,9 @@ import java.util.concurrent.CompletableFuture;
  * (count == maxStackSize, or count == 1 for non-stackable items).
  */
 public class SatchelsAdvancementProvider implements DataProvider {
-    private final FabricDataOutput output;
+    private final FabricPackOutput output;
 
-    public SatchelsAdvancementProvider(FabricDataOutput output) {
+    public SatchelsAdvancementProvider(FabricPackOutput output) {
         this.output = output;
     }
 

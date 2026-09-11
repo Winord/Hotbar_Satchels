@@ -2,7 +2,7 @@ package net.hotbar.satchels;
 
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.hotbar.satchels.content.satchel.SatchelItem;
 import net.hotbar.satchels.content.satchel.SatchelTier;
@@ -25,7 +25,7 @@ public class ModItems {
     public static final List<SatchelItem> ALL_SATCHELS = List.of(SATCHEL_GOLDEN, SATCHEL_DIAMOND, SATCHEL_NETHERITE);
 
     private static SatchelItem register(SatchelTier tier) {
-        ResourceLocation id = Satchels.at(tier.getItemPath());
+        Identifier id = Satchels.at(tier.getItemPath());
         SatchelItem item = new SatchelItem(tier, new Item.Properties().stacksTo(1));
         return Registry.register(BuiltInRegistries.ITEM, id, item);
     }

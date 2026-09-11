@@ -3,7 +3,7 @@ package net.hotbar.satchels.network.packets;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.hotbar.satchels.Satchels;
@@ -31,7 +31,7 @@ import org.jetbrains.annotations.NotNull;
  * scenarios are instead handled by {@code FlashbackCompat}'s deferred retry queue.
  */
 public record RequestSatchelResyncPacketC2S() implements CustomPacketPayload {
-    public static final ResourceLocation ID = Satchels.at("request_satchel_resync");
+    public static final Identifier ID = Satchels.at("request_satchel_resync");
     public static final CustomPacketPayload.Type<RequestSatchelResyncPacketC2S> TYPE = new CustomPacketPayload.Type<>(ID);
     public static final StreamCodec<ByteBuf, RequestSatchelResyncPacketC2S> STREAM_CODEC =
             StreamCodec.unit(new RequestSatchelResyncPacketC2S());
@@ -47,7 +47,9 @@ public record RequestSatchelResyncPacketC2S() implements CustomPacketPayload {
     public static void handle(RequestSatchelResyncPacketC2S packet, ServerPlayer player) {
         SatchelData.get(player).resyncToClient();
 
-        MinecraftServer server = player.getServer();
+        // getServer() itself doesn't exist in 26.1 (cannot find symbol, no method to fall back
+        // on) — using the `server` field directly, same one opened via AW for Group D.
+        MinecraftServer server = player.server;
         if (server == null) return;
         for (ServerPlayer other : server.getPlayerList().getPlayers()) {
             if (other == player) continue;

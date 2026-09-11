@@ -4,14 +4,15 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.*;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.*;
+import net.minecraft.world.inventory.ContainerInput;
 import net.hotbar.satchels.ModTags;
 import net.hotbar.satchels.SatchelsCommonConfig;
 import net.hotbar.satchels.api.ScreenWithSatchel;
@@ -82,7 +83,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
             return false;
         }
 
-        ResourceLocation location = SatchelMenuLocation.resolve(menu);
+        Identifier location = SatchelMenuLocation.resolve(menu);
 
         if (location == null) return true;
         if (!SatchelsCommonConfig.isAllowed(location)) return true;
@@ -99,8 +100,8 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * the vanilla background is already drawn but before item icons.
      */
     @Inject(method = "renderBackground", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;renderBg(Lnet/minecraft/client/gui/GuiGraphics;FII)V"))
-    public void satchels$renderSatchelInventory(GuiGraphics guiGraphics, int p_283661_, int p_281248_, float p_281886_, CallbackInfo ci) {
-        ResourceLocation location = SatchelMenuLocation.resolve(menu);
+    public void satchels$renderSatchelInventory(GuiGraphicsExtractor guiGraphics, int p_283661_, int p_281248_, float p_281886_, CallbackInfo ci) {
+        Identifier location = SatchelMenuLocation.resolve(menu);
 
         if (location == null) return;
         if (!SatchelsCommonConfig.isAllowed(location)) return;
@@ -145,7 +146,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      */
     @Unique
     private boolean satchels$isSatchelFullyRetractedHere() {
-        ResourceLocation location = SatchelMenuLocation.resolve(menu);
+        Identifier location = SatchelMenuLocation.resolve(menu);
         return location != null && SatchelsCommonConfig.isAllowed(location)
                 && satchels$screenWithSatchel.getInventoryYOffset() >= ScreenWithSatchel.INVENTORY_HIDE_OFFSET;
     }
@@ -175,7 +176,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      */
     @Unique
     private boolean satchels$isSatchelInteractionBlockedHere() {
-        ResourceLocation location = SatchelMenuLocation.resolve(menu);
+        Identifier location = SatchelMenuLocation.resolve(menu);
         if (location == null || !SatchelsCommonConfig.isAllowed(location)) return false;
 
         if (SatchelsClientConfig.isSatchelHiddenInInventory()) return true;
@@ -186,7 +187,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * Blocks all three click paths (plain click, shift-click, hotbar-key swap via
      * {@link #satchels$swapWithSatchelSlot}) to a hidden {@code SatchelInventorySlot}.
      * <p>
-     * The hotbar-key swap path calls {@code slotClicked} directly with {@code ClickType.SWAP},
+     * The hotbar-key swap path calls {@code slotClicked} directly with {@code ContainerInput.SWAP},
      * bypassing {@code findSlot} entirely — the target satchel slot is encoded in
      * {@code pMouseButton}, so it's resolved separately here.
      * <p>
@@ -194,7 +195,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * {@code SatchelData#isActive()}.
      */
     @Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)
-    public void satchels$blockHiddenSatchelSlotClicks(Slot pSlot, int pSlotId, int pMouseButton, ClickType pType, CallbackInfo ci) {
+    public void satchels$blockHiddenSatchelSlotClicks(Slot pSlot, int pSlotId, int pMouseButton, ContainerInput pType, CallbackInfo ci) {
         if (!satchels$isSatchelInteractionBlockedHere()) return;
 
         if (pSlot instanceof SatchelInventorySlot) {
@@ -202,24 +203,31 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
             return;
         }
 
-        if (pType == ClickType.SWAP && pMouseButton >= 0 && pMouseButton < menu.slots.size()
+        if (pType == ContainerInput.SWAP && pMouseButton >= 0 && pMouseButton < menu.slots.size()
                 && menu.slots.get(pMouseButton) instanceof SatchelInventorySlot) {
             ci.cancel();
         }
     }
 
-    @WrapOperation(method = {"checkHotbarKeyPressed", "checkHotbarMouseClicked"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ClickType;)V", ordinal = 1))
-    public void satchels$swapWithSatchelSlot(AbstractContainerScreen<?> instance, Slot slot, int index, int i, ClickType type, Operation<Void> original) {
+    @WrapOperation(method = {"checkHotbarKeyPressed", "checkHotbarMouseClicked"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", ordinal = 1))
+    public void satchels$swapWithSatchelSlot(AbstractContainerScreen<?> instance, Slot slot, int index, int i, ContainerInput type, Operation<Void> original) {
         Player player = Minecraft.getInstance().player;
         SatchelData data = SatchelData.get(player);
-        // Without this guard, vanilla's ClickType.SWAP branch calls Slot#remove on the source
+        // Without this guard, vanilla's ContainerInput.SWAP branch calls Slot#remove on the source
         // before SatchelInventory#canPlaceItem ever runs — the stack is pulled out with nowhere
         // to go and silently deleted. This covers both a worn satchel being swapped into its
         // own storage and a different satchel from the inventory being swapped into the
         // equipped one's storage.
         if (
                 SatchelsClientConfig.shouldSwapWithShiftKey() &&
-                        data.canAccess() && data.isSlotInSatchel(i) && hasShiftDown() &&
+                        // 26.1: Screen.hasShiftDown() (the old static live-state poll) is gone —
+                        // confirmed via bytecode search across the whole jar: the only remaining
+                        // hasShiftDown() is an instance default method on KeyEvent (via
+                        // InputWithModifiers), tied to a specific key event, not a live query.
+                        // Minecraft itself now exposes the live-state instance method that this
+                        // code actually wants (decompiled: polls InputConstants.isKeyDown for both
+                        // shift keys, same semantics as the old static helper).
+                        data.canAccess() && data.isSlotInSatchel(i) && net.minecraft.client.Minecraft.getInstance().hasShiftDown() &&
                         !slot.getItem().is(ModTags.SATCHEL)
         ) {
             int satchelIndex = i - data.getHotbarOffset();
@@ -263,9 +271,9 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     }
 
     @Inject(method = "renderSlot", at = @At("HEAD"))
-    public void satchels$clipSatchelSlotStart(GuiGraphics guiGraphics, Slot slot, CallbackInfo ci) {
+    public void satchels$clipSatchelSlotStart(GuiGraphicsExtractor guiGraphics, Slot slot, CallbackInfo ci) {
         if (!satchels$needsScissor(slot)) return;
-        ResourceLocation location = SatchelMenuLocation.resolve(menu);
+        Identifier location = SatchelMenuLocation.resolve(menu);
         if (location == null || !SatchelsCommonConfig.isAllowed(location)) return;
 
         int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
@@ -281,9 +289,9 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     }
 
     @Inject(method = "renderSlot", at = @At("RETURN"))
-    public void satchels$clipSatchelSlotEnd(GuiGraphics guiGraphics, Slot slot, CallbackInfo ci) {
+    public void satchels$clipSatchelSlotEnd(GuiGraphicsExtractor guiGraphics, Slot slot, CallbackInfo ci) {
         if (!satchels$needsScissor(slot)) return;
-        ResourceLocation location = SatchelMenuLocation.resolve(menu);
+        Identifier location = SatchelMenuLocation.resolve(menu);
         if (location == null || !SatchelsCommonConfig.isAllowed(location)) return;
         guiGraphics.disableScissor();
     }

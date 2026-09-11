@@ -6,7 +6,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -33,7 +33,7 @@ import org.jetbrains.annotations.NotNull;
  * appears (or the entry times out). See {@link FlashbackCompat} for the full explanation.
  */
 public record SatchelSlotUpdatePacketS2C(int entityId, ItemStack stack) implements CustomPacketPayload {
-    public static final ResourceLocation ID = Satchels.at("satchel_slot_update");
+    public static final Identifier ID = Satchels.at("satchel_slot_update");
     public static final CustomPacketPayload.Type<SatchelSlotUpdatePacketS2C> TYPE = new CustomPacketPayload.Type<>(ID);
     public static final StreamCodec<RegistryFriendlyByteBuf, SatchelSlotUpdatePacketS2C> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, SatchelSlotUpdatePacketS2C::entityId,

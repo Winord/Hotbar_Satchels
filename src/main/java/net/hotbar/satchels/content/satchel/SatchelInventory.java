@@ -10,7 +10,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.entity.player.StackedContents;
+import net.minecraft.world.entity.player.StackedItemContents;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.StackedContentsCompatible;
 import net.minecraft.world.item.ItemStack;
@@ -139,7 +139,9 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
 
     @Override
     public boolean stillValid(@NotNull Player player) {
-        return player.canInteractWithEntity(this.parent.getPlayer(), 4.0F);
+        // 26.1: isWithinEntityInteractionRange(Entity) removed; now requires an explicit distance.
+        // entityInteractionRange() is the vanilla replacement for the old fixed 4.0F check.
+        return player.isWithinEntityInteractionRange(this.parent.getPlayer(), player.entityInteractionRange());
     }
 
     /**
@@ -285,6 +287,32 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
         return -1;
     }
 
+    /**
+     * 26.1: mirrors {@code Inventory#findSlotMatchingCraftingIngredient(Holder<Item>, ItemStack)}
+     * (confirmed via decompile) — the recipe-book auto-craft pipeline (see
+     * {@code ServerPlaceRecipe#moveItemToGrid}) now matches by {@code Holder<Item>} rather than a
+     * concrete {@code ItemStack}, since it only knows which ingredient index matched, not which
+     * exact stack. Same "usable for crafting" criteria as {@link #findSlotMatchingUnusedItem}.
+     */
+    public int findSlotMatchingCraftingIngredient(net.minecraft.core.Holder<net.minecraft.world.item.Item> item, ItemStack existingItem) {
+        for (int i = 0; i < this.items.size(); i++) {
+            ItemStack found = this.items.get(i);
+            if (found.isEmpty()
+                    || !found.is(item)
+                    || found.isDamaged()
+                    || found.isEnchanted()
+                    || found.has(DataComponents.CUSTOM_NAME)) {
+                continue;
+            }
+            if (!existingItem.isEmpty() && !ItemStack.isSameItemSameComponents(existingItem, found)) {
+                continue;
+            }
+            return i;
+        }
+
+        return -1;
+    }
+
     public int findSlotMatchingItem(ItemStack searchingFor) {
         for (int i = 0; i < this.items.size(); i++) {
             ItemStack found = this.items.get(i);
@@ -302,13 +330,30 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
     @NotNull
     public CompoundTag serializeNBT(@NotNull HolderLookup.Provider provider) {
         ListTag listTag = new ListTag();
+        net.minecraft.nbt.NbtOps nbtOps = net.minecraft.nbt.NbtOps.INSTANCE;
 
         for (int i = 0; i < this.items.size(); i++) {
             ItemStack slotContent = this.items.get(i);
             if (!slotContent.isEmpty()) {
-                CompoundTag itemTag = new CompoundTag();
-                itemTag.putInt(KEY_SLOT, i);
-                listTag.add(slotContent.save(provider, itemTag));
+                // Lambdas can only capture effectively-final locals; `i` is mutated by the loop.
+                final int slot = i;
+                // 26.1: ItemStack.save(Provider, CompoundTag) removed. ItemStack.CODEC is already
+                // Codec<ItemStack> (no .codec()). net.minecraft.Util moved to net.minecraft.util.Util
+                // and logAndPause was renamed to logAndPauseIfInIde (both confirmed via javap).
+                ItemStack.CODEC
+                    .encodeStart(provider.createSerializationContext(nbtOps), slotContent)
+                    .resultOrPartial(e -> net.minecraft.util.Util.logAndPauseIfInIde("SatchelInventory save: " + e))
+                    .ifPresent(encoded -> {
+                        if (encoded instanceof CompoundTag itemTag) {
+                            itemTag.putInt(KEY_SLOT, slot);
+                            listTag.add(itemTag);
+                        } else {
+                            CompoundTag wrapper = new CompoundTag();
+                            wrapper.putInt(KEY_SLOT, slot);
+                            wrapper.put("Item", encoded);
+                            listTag.add(wrapper);
+                        }
+                    });
             }
         }
 
@@ -319,13 +364,21 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
 
     @Override
     public void deserializeNBT(@NotNull HolderLookup.Provider provider, @NotNull CompoundTag tag) {
-        ListTag tagList = tag.getList(KEY_ITEMS, ListTag.TAG_COMPOUND);
+        // Group A fix: javac's own error gave `required: String` for getList, i.e. the
+        // TAG_COMPOUND filter argument is gone — extrapolated (not directly confirmed) that it
+        // now returns Optional<ListTag> like every other getter in this same refactor wave.
+        // Re-check against the real CompoundTag class if this specific line still fails.
+        ListTag tagList = tag.getList(KEY_ITEMS).orElseGet(ListTag::new);
 
         for (int i = 0; i < tagList.size(); i++) {
-            CompoundTag itemTags = tagList.getCompound(i);
-            int slot = itemTags.getInt(KEY_SLOT);
+            CompoundTag itemTags = tagList.getCompound(i).orElseGet(CompoundTag::new);
+            int slot = itemTags.getInt(KEY_SLOT).orElse(-1);
             if (slot >= 0 && slot < this.items.size()) {
-                ItemStack.parse(provider, itemTags).ifPresent((stack) -> this.items.set(slot, stack));
+                // 26.1: ItemStack.parse(Provider, Tag) removed. Decode via ItemStack.CODEC directly.
+                ItemStack.CODEC
+                    .parse(provider.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), itemTags)
+                    .resultOrPartial(e -> {})
+                    .ifPresent((stack) -> this.items.set(slot, stack));
             }
         }
     }
@@ -356,8 +409,10 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
     // endregion
 
     // region StackedContentsCompatible
+    // 26.1: StackedContentsCompatible interface now requires fillStackedContents(StackedItemContents).
+    // StackedItemContents.accountSimpleStack(ItemStack) confirmed present in 26.1.2 jar.
     @Override
-    public void fillStackedContents(@NotNull StackedContents contents) {
+    public void fillStackedContents(@NotNull StackedItemContents contents) {
         for (ItemStack itemstack : this.items) {
             contents.accountSimpleStack(itemstack);
         }

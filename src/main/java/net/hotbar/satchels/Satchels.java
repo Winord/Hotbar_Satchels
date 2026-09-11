@@ -1,11 +1,13 @@
 package net.hotbar.satchels;
 
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.core.cauldron.CauldronInteraction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.cauldron.CauldronInteractions;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -34,12 +36,12 @@ public class Satchels implements ModInitializer {
         ModSounds.register();
         ModRecipeSerializers.register();
 
-        PayloadTypeRegistry.playS2C().register(SatchelSlotUpdatePacketS2C.TYPE, SatchelSlotUpdatePacketS2C.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(SatchelStatusPacketS2C.TYPE, SatchelStatusPacketS2C.STREAM_CODEC);
-        PayloadTypeRegistry.playS2C().register(SatchelInventorySyncPacketS2C.TYPE, SatchelInventorySyncPacketS2C.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(ToggleSatchelPacketC2S.TYPE, ToggleSatchelPacketC2S.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(SatchelOffsetUpdatePacketC2S.TYPE, SatchelOffsetUpdatePacketC2S.STREAM_CODEC);
-        PayloadTypeRegistry.playC2S().register(RequestSatchelResyncPacketC2S.TYPE, RequestSatchelResyncPacketC2S.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SatchelSlotUpdatePacketS2C.TYPE, SatchelSlotUpdatePacketS2C.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SatchelStatusPacketS2C.TYPE, SatchelStatusPacketS2C.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(SatchelInventorySyncPacketS2C.TYPE, SatchelInventorySyncPacketS2C.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(ToggleSatchelPacketC2S.TYPE, ToggleSatchelPacketC2S.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(SatchelOffsetUpdatePacketC2S.TYPE, SatchelOffsetUpdatePacketC2S.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(RequestSatchelResyncPacketC2S.TYPE, RequestSatchelResyncPacketC2S.STREAM_CODEC);
         ServerPlayNetworking.registerGlobalReceiver(ToggleSatchelPacketC2S.TYPE, (packet, context) ->
                 context.player().server.execute(() -> ToggleSatchelPacketC2S.handle(packet, context.player()))
         );
@@ -66,21 +68,36 @@ public class Satchels implements ModInitializer {
      * in search results too, so no separate handling is needed for tab vs. search visibility.
      */
     private static void registerCreativeTabEntries() {
-        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries -> {
+        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries -> {
             // addAfter each in turn so all three land together, right after the lead, in tier order.
-            entries.addAfter(Items.LEAD, new ItemStack(ModItems.SATCHEL_GOLDEN));
-            entries.addAfter(ModItems.SATCHEL_GOLDEN, new ItemStack(ModItems.SATCHEL_DIAMOND));
-            entries.addAfter(ModItems.SATCHEL_DIAMOND, new ItemStack(ModItems.SATCHEL_NETHERITE));
+            entries.insertAfter(Items.LEAD, new ItemStack(ModItems.SATCHEL_GOLDEN));
+            entries.insertAfter(ModItems.SATCHEL_GOLDEN, new ItemStack(ModItems.SATCHEL_DIAMOND));
+            entries.insertAfter(ModItems.SATCHEL_DIAMOND, new ItemStack(ModItems.SATCHEL_NETHERITE));
         });
     }
 
     public static void initExtra() {
         for (var satchel : ModItems.ALL_SATCHELS) {
-            CauldronInteraction.WATER.map().put(satchel, CauldronInteraction.DYED_ITEM);
+            // 26.1: CauldronInteraction.WATER/.DYED_ITEM removed.
+            // CauldronInteractions.WATER is a Dispatcher; DYED_ITEM replaced by inline lambda.
+            CauldronInteractions.WATER.put(satchel, (state, level, pos, player, hand, stack) -> {
+                if (!stack.has(DataComponents.DYED_COLOR)) return net.minecraft.world.InteractionResult.PASS;
+                // 26.1: Level.isClientSide is now a private field with a public isClientSide()
+                // method instead (confirmed via javap) — same name, now needs parens.
+                if (!level.isClientSide()) {
+                    stack.remove(DataComponents.DYED_COLOR);
+                    player.awardStat(net.minecraft.stats.Stats.USE_CAULDRON);
+                    player.awardStat(net.minecraft.stats.Stats.ITEM_USED.get(stack.getItem()));
+                    net.minecraft.world.level.block.LayeredCauldronBlock.lowerFillLevel(state, level, pos);
+                    level.playSound(null, pos, net.minecraft.sounds.SoundEvents.GENERIC_SPLASH, net.minecraft.sounds.SoundSource.BLOCKS, 1.0F, 1.0F);
+                    level.gameEvent(net.minecraft.world.level.gameevent.GameEvent.FLUID_PICKUP, pos, net.minecraft.world.level.gameevent.GameEvent.Context.of(player));
+                }
+                return net.minecraft.world.InteractionResult.SUCCESS;
+            });
         }
     }
 
-    public static ResourceLocation at(String path) {
-        return ResourceLocation.fromNamespaceAndPath(ID, path);
+    public static Identifier at(String path) {
+        return Identifier.fromNamespaceAndPath(ID, path);
     }
 }

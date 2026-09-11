@@ -5,7 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.mojang.logging.LogUtils;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Tuple;
 import org.slf4j.Logger;
 
@@ -36,9 +36,9 @@ public class SatchelsCommonConfig {
     private static boolean logOpenedMenu = false;
     private static List<String> allowedMenusRaw = new ArrayList<>(getMenuDefaults());
 
-    private static final List<ResourceLocation> allowed = new ArrayList<>();
-    private static final Map<ResourceLocation, Tuple<Integer, Integer>> offsets = new HashMap<>();
-    private static final Map<ResourceLocation, Tuple<Integer, Integer>> overlayOffsets = new HashMap<>();
+    private static final List<Identifier> allowed = new ArrayList<>();
+    private static final Map<Identifier, Tuple<Integer, Integer>> offsets = new HashMap<>();
+    private static final Map<Identifier, Tuple<Integer, Integer>> overlayOffsets = new HashMap<>();
 
     private record Data(boolean log_opened_menu, List<String> allowed_menus) {
     }
@@ -84,7 +84,7 @@ public class SatchelsCommonConfig {
             }
 
             String[] split = entry.split(" ");
-            ResourceLocation location = ResourceLocation.parse(split[0]);
+            Identifier location = Identifier.parse(split[0]);
             allowed.add(location);
 
             if (split.length == 3) {
@@ -106,15 +106,15 @@ public class SatchelsCommonConfig {
         return logOpenedMenu;
     }
 
-    public static boolean isAllowed(ResourceLocation menuLocation) {
+    public static boolean isAllowed(Identifier menuLocation) {
         return allowed.contains(menuLocation);
     }
 
-    public static Tuple<Integer, Integer> getOffset(ResourceLocation menuLocation) {
+    public static Tuple<Integer, Integer> getOffset(Identifier menuLocation) {
         return offsets.getOrDefault(menuLocation, new Tuple<>(0, 0));
     }
 
-    public static Tuple<Integer, Integer> getOverlayOffset(ResourceLocation menuLocation) {
+    public static Tuple<Integer, Integer> getOverlayOffset(Identifier menuLocation) {
         return overlayOffsets.getOrDefault(menuLocation, new Tuple<>(0, 0));
     }
 
@@ -139,10 +139,10 @@ public class SatchelsCommonConfig {
 
         String[] split = entry.split(" ");
         if (split.length == 1) {
-            ResourceLocation location = ResourceLocation.tryParse(split[0]);
+            Identifier location = Identifier.tryParse(split[0]);
             return location != null;
         } else if (split.length == 3) {
-            ResourceLocation location = ResourceLocation.tryParse(split[0]);
+            Identifier location = Identifier.tryParse(split[0]);
             if (location == null) return false;
 
             try {
@@ -152,7 +152,7 @@ public class SatchelsCommonConfig {
             } catch (NumberFormatException ignored) {
             }
         } else if (split.length == 5) {
-            ResourceLocation location = ResourceLocation.tryParse(split[0]);
+            Identifier location = Identifier.tryParse(split[0]);
             if (location == null) return false;
 
             try {

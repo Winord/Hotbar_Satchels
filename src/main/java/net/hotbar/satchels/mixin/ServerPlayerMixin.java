@@ -3,7 +3,7 @@ package net.hotbar.satchels.mixin;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.portal.DimensionTransition;
+import net.minecraft.world.level.portal.TeleportTransition;
 import net.hotbar.satchels.SatchelsEventHooks;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,6 +26,9 @@ import java.util.OptionalInt;
  * {@code HorseInventoryMenuMixin}). The duplicate-slot guard in
  * {@link SatchelsEventHooks#onMenuOpen} (checking for an existing {@code SatchelInventorySlot})
  * covers both paths.
+ * <p>
+ * 26.1 port note: {@code DimensionTransition} moved from {@code net.minecraft.server.level}
+ * to {@code net.minecraft.world.level.portal} in 26.1.
  */
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixin {
@@ -36,32 +39,8 @@ public abstract class ServerPlayerMixin {
         SatchelsEventHooks.onMenuOpen(self, self.containerMenu);
     }
 
-    /**
-     * Re-syncs satchel state to the client after a dimension change (Nether/End portal,
-     * End gateway, {@code /execute in}, ...).
-     * <p>
-     * {@link ServerPlayer#changeDimension(DimensionTransition)} does not recreate the
-     * {@code ServerPlayer}, so server-side {@link SatchelData#isActive()} stays correct on its
-     * own. The client is a different story: vanilla's {@code ClientboundRespawnPacket} is used
-     * both for death respawns and dimension changes, and in both cases
-     * {@code ClientPacketListener#handleRespawn} recreates {@code LocalPlayer} — a fresh
-     * {@code Player} instance, and with it a fresh client-side {@code SatchelData}
-     * ({@code @Unique} field in {@code PlayerMixin}, defaulting to {@code active = false})
-     * until the server explicitly sends the real state again.
-     * <p>
-     * {@link SatchelsEventHooks#playerJoin} only sent {@code SatchelStatusPacketS2C} on
-     * {@code ServerPlayConnectionEvents.JOIN} (login) until the {@code resyncToClient} fix,
-     * and that event doesn't fire on a portal-triggered dimension change either way, so that
-     * resync path alone isn't enough here. This inject calls
-     * {@link SatchelData#resyncToClient()} right after {@code changeDimension} completes; since
-     * that method is the single entry point for any dimension change, one inject covers all
-     * cases.
-     * <p>
-     * The {@code cir.getReturnValue() == null} guard handles a cancelled transition (e.g. by
-     * another mod), where no new entity is actually returned.
-     */
     @Inject(method = "changeDimension", at = @At("RETURN"))
-    private void satchels$onChangeDimension(DimensionTransition transition, CallbackInfoReturnable<Entity> cir) {
+    private void satchels$onChangeDimension(TeleportTransition transition, CallbackInfoReturnable<Entity> cir) {
         if (cir.getReturnValue() == null) return;
         ServerPlayer self = (ServerPlayer) (Object) this;
         SatchelData.get(self).resyncToClient();

@@ -1,7 +1,7 @@
 package net.hotbar.satchels;
 
 import net.minecraft.advancements.AdvancementHolder;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -15,7 +15,7 @@ import net.minecraft.server.level.ServerPlayer;
  */
 public class ModCriteria {
 
-    private static final ResourceLocation SATCHEL_FULL_ID = Satchels.at("satchel_full");
+    private static final Identifier SATCHEL_FULL_ID = Satchels.at("satchel_full");
 
     /**
      * Awards the {@code satchels:satchel_full} advancement to {@code player} if they

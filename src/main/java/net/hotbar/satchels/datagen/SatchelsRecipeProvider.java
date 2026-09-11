@@ -1,21 +1,22 @@
 package net.hotbar.satchels.datagen;
 
-import net.fabricmc.fabric.api.datagen.v1.FabricDataOutput;
+import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricRecipeProvider;
 import net.fabricmc.fabric.api.tag.convention.v2.ConventionalItemTags;
-import net.minecraft.advancements.Advancement;
-import net.minecraft.advancements.AdvancementRequirements;
-import net.minecraft.advancements.AdvancementRewards;
-import net.minecraft.advancements.critereon.RecipeUnlockedTrigger;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.data.recipes.RecipeBuilder;
 import net.minecraft.data.recipes.RecipeCategory;
 import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.data.recipes.RecipeProvider;
+import net.minecraft.data.recipes.RecipeUnlockAdvancementBuilder;
 import net.minecraft.data.recipes.ShapedRecipeBuilder;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.ItemStackTemplate;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.ShapedRecipePattern;
 import net.hotbar.satchels.ModItems;
 import net.hotbar.satchels.Satchels;
@@ -43,59 +44,87 @@ import java.util.concurrent.CompletableFuture;
  * </ul>
  * {@code .save(output)} / {@code output.accept(...)} auto-generates an unlock advancement
  * ({@code advancement/recipes/<category>/<id>.json}) for every recipe.
+ * <p>
+ * 26.1: {@code FabricRecipeProvider}'s abstract method changed shape entirely (confirmed against
+ * the real Fabric API 26.1.2 branch source on GitHub) — it's no longer an override of vanilla's
+ * {@code buildRecipes(RecipeOutput)}. The new hook is {@code createRecipeProvider(HolderLookup
+ * .Provider, RecipeOutput)}, which must return a fresh vanilla {@code RecipeProvider} instance;
+ * that instance's own no-arg {@code buildRecipes()} is what actually gets called. All the
+ * per-recipe logic below moved into an anonymous subclass for that reason — it's also why
+ * {@code has(...)} and {@code netheriteSmithing(...)} (both instance methods on vanilla's
+ * {@code RecipeProvider}) now resolve: they didn't exist as visible symbols on the old style of
+ * class, which is what triggered the original "cannot find symbol" errors for them too.
  */
 public class SatchelsRecipeProvider extends FabricRecipeProvider {
-    public SatchelsRecipeProvider(FabricDataOutput output, CompletableFuture<HolderLookup.Provider> registriesFuture) {
+    public SatchelsRecipeProvider(FabricPackOutput output, CompletableFuture<HolderLookup.Provider> registriesFuture) {
         super(output, registriesFuture);
     }
 
     @Override
-    public void buildRecipes(@NotNull RecipeOutput output) {
-        ShapedRecipeBuilder.shaped(RecipeCategory.TOOLS, ModItems.SATCHEL_GOLDEN)
-                .pattern(" s ")
-                .pattern("lgl")
-                .pattern("sls")
-                .define('s', ConventionalItemTags.STRINGS)
-                .define('l', ConventionalItemTags.LEATHERS)
-                .define('g', ConventionalItemTags.GOLD_INGOTS)
-                .unlockedBy("has_gold", has(ConventionalItemTags.GOLD_INGOTS))
-                .save(output);
+    protected @NotNull RecipeProvider createRecipeProvider(@NotNull HolderLookup.Provider registries, @NotNull RecipeOutput output) {
+        return new RecipeProvider(registries, output) {
+            @Override
+            public void buildRecipes() {
+                this.shaped(RecipeCategory.TOOLS, ModItems.SATCHEL_GOLDEN)
+                        .pattern(" s ")
+                        .pattern("lgl")
+                        .pattern("sls")
+                        .define('s', ConventionalItemTags.STRINGS)
+                        .define('l', ConventionalItemTags.LEATHERS)
+                        .define('g', ConventionalItemTags.GOLD_INGOTS)
+                        .unlockedBy("has_gold", has(ConventionalItemTags.GOLD_INGOTS))
+                        .save(output);
 
-        satchelUpgradeRecipe(
-                output, Satchels.at("satchel_diamond"), RecipeCategory.TOOLS, ModItems.SATCHEL_DIAMOND,
-                List.of(" d ", "dgd", " d "),
-                Map.of('d', Ingredient.of(ConventionalItemTags.DIAMOND_GEMS), 'g', Ingredient.of(ModItems.SATCHEL_GOLDEN)),
-                "has_diamond", has(ConventionalItemTags.DIAMOND_GEMS)
-        );
+                satchelUpgradeRecipe(
+                        output, Satchels.at("satchel_diamond"), RecipeCategory.TOOLS, ModItems.SATCHEL_DIAMOND,
+                        List.of(" d ", "dgd", " d "),
+                        Map.of(
+                                'd', Ingredient.of(registries.lookupOrThrow(Registries.ITEM).getOrThrow(ConventionalItemTags.DIAMOND_GEMS)),
+                                'g', Ingredient.of(ModItems.SATCHEL_GOLDEN)
+                        ),
+                        "has_diamond", has(ConventionalItemTags.DIAMOND_GEMS)
+                );
 
-        netheriteSmithing(output, ModItems.SATCHEL_DIAMOND, RecipeCategory.TOOLS, ModItems.SATCHEL_NETHERITE);
+                // 26.1: netheriteSmithing(Item, RecipeCategory, Item) — no RecipeOutput param
+                // anymore (confirmed via decompile); it's an instance method that uses this
+                // RecipeProvider's own internally-held output.
+                netheriteSmithing(ModItems.SATCHEL_DIAMOND, RecipeCategory.TOOLS, ModItems.SATCHEL_NETHERITE);
+            }
+
+            /**
+             * Like {@link ShapedRecipeBuilder#save} (including unlock-advancement wiring), but
+             * emits a {@link SatchelUpgradeRecipe} instead of a plain {@code ShapedRecipe} so the
+             * output can carry the dyed ingredient's color. {@link ShapedRecipeBuilder} always
+             * produces a vanilla {@code ShapedRecipe} with no hook to substitute the type, so
+             * this reimplements just enough of its {@code save()} to inject ours instead —
+             * mirrored directly off the real (decompiled) {@code ShapedRecipeBuilder.save} and
+             * {@code RecipeUnlockAdvancementBuilder.build}.
+             */
+            private void satchelUpgradeRecipe(
+                    RecipeOutput output, Identifier id, RecipeCategory category, net.minecraft.world.level.ItemLike result,
+                    List<String> pattern, Map<Character, Ingredient> key,
+                    String criterionName, net.minecraft.advancements.Criterion<?> criterion
+            ) {
+                ShapedRecipePattern shapedPattern = ShapedRecipePattern.of(key, pattern);
+                ResourceKey<Recipe<?>> recipeId = ResourceKey.create(Registries.RECIPE, id);
+
+                RecipeUnlockAdvancementBuilder advancementBuilder = new RecipeUnlockAdvancementBuilder();
+                advancementBuilder.unlockedBy(criterionName, criterion);
+
+                CraftingBookCategory bookCategory = RecipeBuilder.determineCraftingBookCategory(category);
+                SatchelUpgradeRecipe recipe = new SatchelUpgradeRecipe(
+                        "", bookCategory, shapedPattern, new ItemStackTemplate(result.asItem(), 1), true
+                );
+
+                output.accept(recipeId, recipe, advancementBuilder.build(output, recipeId, category));
+            }
+        };
     }
 
-    /**
-     * Like {@link ShapedRecipeBuilder#save} (including unlock-advancement wiring), but emits a
-     * {@link SatchelUpgradeRecipe} instead of a plain {@code ShapedRecipe} so the output can
-     * carry the dyed ingredient's color. {@link ShapedRecipeBuilder} always produces a vanilla
-     * {@code ShapedRecipe} with no hook to substitute the type, so this reimplements just enough
-     * of its {@code save()} to inject ours instead.
-     */
-    private static void satchelUpgradeRecipe(
-            RecipeOutput output, ResourceLocation id, RecipeCategory category, net.minecraft.world.level.ItemLike result,
-            List<String> pattern, Map<Character, Ingredient> key,
-            String criterionName, net.minecraft.advancements.Criterion<?> criterion
-    ) {
-        ShapedRecipePattern shapedPattern = ShapedRecipePattern.of(key, pattern);
-
-        Advancement.Builder advancement = output.advancement()
-                .addCriterion("has_the_recipe", RecipeUnlockedTrigger.unlocked(id))
-                .rewards(AdvancementRewards.Builder.recipe(id))
-                .requirements(AdvancementRequirements.Strategy.OR)
-                .addCriterion(criterionName, criterion);
-
-        CraftingBookCategory bookCategory = RecipeBuilder.determineBookCategory(category);
-        SatchelUpgradeRecipe recipe = new SatchelUpgradeRecipe(
-                "", bookCategory, shapedPattern, new ItemStack(result), true
-        );
-
-        output.accept(id, recipe, advancement.build(id.withPrefix("recipes/" + category.getFolderName() + "/")));
+    // DataProvider#getName() is still abstract in 26.1 (confirmed via javap) and FabricRecipeProvider
+    // doesn't provide a default — every other datagen provider in this codebase overrides it too.
+    @Override
+    public @NotNull String getName() {
+        return "Hotbar Satchels Recipes";
     }
 }

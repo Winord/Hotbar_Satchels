@@ -2,7 +2,7 @@ package net.hotbar.satchels.client;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.hotbar.satchels.Satchels;
 import net.hotbar.satchels.content.satchel.SatchelTier;
 
@@ -14,9 +14,9 @@ import java.util.Map;
 public class ModSprites {
     /**
      * A GUI sprite id paired with its exact pixel size, for
-     * {@code GuiGraphics#blitSprite(ResourceLocation, int, int, int, int)}.
+     * {@code GuiGraphics#blitSprite(Identifier, int, int, int, int)}.
      */
-    public record Sprite(ResourceLocation id, int width, int height) {}
+    public record Sprite(Identifier id, int width, int height) {}
 
     /**
      * Per-tier inventory-row background, used by {@code ScreenWithSatchel#renderSatchelInventory}.
@@ -54,8 +54,8 @@ public class ModSprites {
     }
 
     /** The single equip-slot widget on the vanilla inventory screen — one fixed size regardless of tier. */
-    public static final ResourceLocation SATCHEL_SLOT_INVENTORY = Satchels.at("satchel_slot_inventory");
-    public static final ResourceLocation SATCHEL_SLOT_ICON = Satchels.at("slot/satchel");
-    public static final ResourceLocation SATCHEL_HOTBAR_SELECTION = Satchels.at("satchel_hotbar_selection");
-    public static final ResourceLocation VANILLA_HOTBAR_SELECTION = ResourceLocation.withDefaultNamespace("hud/hotbar_selection");
+    public static final Identifier SATCHEL_SLOT_INVENTORY = Satchels.at("satchel_slot_inventory");
+    public static final Identifier SATCHEL_SLOT_ICON = Satchels.at("slot/satchel");
+    public static final Identifier SATCHEL_HOTBAR_SELECTION = Satchels.at("satchel_hotbar_selection");
+    public static final Identifier VANILLA_HOTBAR_SELECTION = Identifier.withDefaultNamespace("hud/hotbar_selection");
 }

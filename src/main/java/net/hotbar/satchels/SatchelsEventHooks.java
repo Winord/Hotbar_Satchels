@@ -4,13 +4,13 @@ import com.mojang.logging.LogUtils;
 import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.hotbar.satchels.api.SatchelAccess;
 import net.hotbar.satchels.api.MenuWithSatchel;
 import net.hotbar.satchels.content.satchel.SatchelData;
@@ -39,7 +39,10 @@ public class SatchelsEventHooks {
     }
 
     private static void playerClone(ServerPlayer oldPlayer, ServerPlayer newPlayer, boolean alive) {
-        if (oldPlayer.level().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY)) {
+        // 26.1: GameRules.getBoolean(GameRule<Boolean>) removed — confirmed via javap against the
+        // real jar. The instance returned by getGameRules() now exposes a generic <T> T get(GameRule<T>).
+        if (oldPlayer.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
+                && serverLevel.getGameRules().get(GameRules.KEEP_INVENTORY)) {
             ItemStack previous = SatchelData.get(oldPlayer).getSatchelSlotStack();
             SatchelData.get(newPlayer).setSatchelSlotStack(previous.copy());
             SatchelData.get(newPlayer).setActive(SatchelData.get(oldPlayer).isActive(), false);
@@ -61,7 +64,7 @@ public class SatchelsEventHooks {
 
         SatchelData satchelData = SatchelData.get(player);
 
-        ResourceLocation menuLocation;
+        Identifier menuLocation;
         try {
             menuLocation = BuiltInRegistries.MENU.getKey(menu.getType());
         } catch (Exception ignored) {

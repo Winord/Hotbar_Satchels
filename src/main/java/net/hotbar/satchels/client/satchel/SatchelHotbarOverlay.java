@@ -2,12 +2,13 @@ package net.hotbar.satchels.client.satchel;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FastColor;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.GameType;
@@ -43,7 +44,7 @@ public class SatchelHotbarOverlay {
 
     private int lastColor = SatchelItem.DEFAULT_COLOR;
 
-    public void render(GuiGraphics graphics, DeltaTracker deltaTracker) {
+    public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options.hideGui || mc.gameMode == null || mc.gameMode.getPlayerMode() == GameType.SPECTATOR)
             return;
@@ -89,34 +90,34 @@ public class SatchelHotbarOverlay {
         if (tier == null) return;
         ModSprites.Sprite hotbarSprite = ModSprites.getHotbarSprite(tier);
 
-        int red = FastColor.ARGB32.red(lastColor);
-        int green = FastColor.ARGB32.green(lastColor);
-        int blue = FastColor.ARGB32.blue(lastColor);
-        int alpha = FastColor.ARGB32.alpha(lastColor);
-        graphics.setColor(
-                red / 255f,
-                green / 255f,
-                blue / 255f,
-                alpha / 255f
-        );
+        int red = ARGB.red(lastColor);
+        int green = ARGB.green(lastColor);
+        int blue = ARGB.blue(lastColor);
+        int alpha = ARGB.alpha(lastColor);
+        // 26.1: setColor() removed. Pass tint as ARGB int directly to blitSprite.
+        int hotbarTint = ARGB.color(alpha, red, green, blue);
 
-        graphics.pose().pushPose();
-        graphics.pose().translate(0, this.yOffset, 750);
+        // 26.1: pose() returns Matrix3x2fStack (2D): pushPose→pushMatrix, translate loses Z.
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(0f, (float) this.yOffset);
 
         int xOffset = satchelData.getHotbarOffset() * 20;
         // Drawn flush with the vanilla hotbar's left edge — each HOTBAR_SPRITES texture carries
         // its own 1px left border column, see ModSprites for why.
-        graphics.blitSprite(hotbarSprite.id(), x + xOffset, y, hotbarSprite.width(), hotbarSprite.height());
+        // 26.1: blitSprite requires RenderPipeline as first arg; tint as last int arg.
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, hotbarSprite.id(), x + xOffset, y, hotbarSprite.width(), hotbarSprite.height(), hotbarTint);
 
         int selected = player.getInventory().selected;
         boolean selectedInSatchel = satchelData.isSlotInSatchel(selected);
-        ResourceLocation selectionSprite = selectedInSatchel ? ModSprites.SATCHEL_HOTBAR_SELECTION : ModSprites.VANILLA_HOTBAR_SELECTION;
+        Identifier selectionSprite = selectedInSatchel ? ModSprites.SATCHEL_HOTBAR_SELECTION : ModSprites.VANILLA_HOTBAR_SELECTION;
 
         float selectionYOffset = selectedInSatchel ? 0 : -this.yOffset;
 
-        graphics.pose().pushPose();
-        graphics.pose().translate(0, selectionYOffset, 0);
+        // 26.1: pushPose→pushMatrix, translate loses Z.
+        graphics.pose().pushMatrix();
+        graphics.pose().translate(0f, selectionYOffset);
 
+        int selectionTint;
         if (selectedInSatchel) {
             float[] hsb = Color.RGBtoHSB(red, green, blue, null);
             hsb[0] = Math.max(hsb[0] - 0.01f, 0f);
@@ -124,32 +125,28 @@ public class SatchelHotbarOverlay {
             hsb[2] = Math.min(hsb[2] + 0.1f, 1f);
 
             int rgb = Color.HSBtoRGB(hsb[0], hsb[1], hsb[2]);
-            graphics.setColor(
-                    FastColor.ARGB32.red(rgb) / 255f,
-                    FastColor.ARGB32.green(rgb) / 255f,
-                    FastColor.ARGB32.blue(rgb) / 255f,
-                    alpha / 255f
-            );
+            selectionTint = ARGB.color(alpha, ARGB.red(rgb), ARGB.green(rgb), ARGB.blue(rgb));
         } else {
-            graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+            selectionTint = ARGB.color(255, 255, 255, 255);
         }
 
-        graphics.blitSprite(selectionSprite, x - 1 + (selected * 20), y - 1, 24, selectedInSatchel ? 24 : 23);
+        // 26.1: blitSprite requires RenderPipeline as first arg; tint as last int arg.
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, selectionSprite, x - 1 + (selected * 20), y - 1, 24, selectedInSatchel ? 24 : 23, selectionTint);
 
-        graphics.pose().popPose();
+        graphics.pose().popMatrix();
 
         // Items (icon + count) are drawn last, on top of the selection-frame sprite above: the
         // frame is a hollow border, but count text for two-digit stacks overflows the 16x16
         // icon footprint into the frame's border area, and these are 2D GUI blits with no depth
         // testing — draw order alone decides which one wins.
-        graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        // 26.1: setColor() removed — no tint needed for items (rendered at full white by default).
         for (int i = 0; i < satchelData.getSatchelInventory().getContainerSize(); i++) {
             ItemStack stack = satchelData.getSatchelInventory().getItem(i);
             SatchelRenderUtils.renderSlot(graphics, x + (i * 20) + 3 + xOffset, y + 3, deltaTracker, player, stack, i + 1);
         }
 
-        graphics.pose().popPose();
+        graphics.pose().popMatrix();
 
-        graphics.flush();
+        // 26.1: flush() removed — rendering is deferred automatically.
     }
 }

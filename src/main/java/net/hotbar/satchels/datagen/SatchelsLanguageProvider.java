@@ -1,6 +1,6 @@
 package net.hotbar.satchels.datagen;
 
-import net.fabricmc.fabric.api.datagen.v1.FabricDataOutput;
+import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider;
 import net.minecraft.core.HolderLookup;
 import net.hotbar.satchels.ModItems;
@@ -14,11 +14,11 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  * Item name keys use the typed {@code add(Item, String)} / {@code add(TagKey, String)}
  * overloads so a future registry rename becomes a compile error instead of a silently stale
- * json entry. All other keys (keybinding, sound, Cloth Config, Accessories slot label,
+ * json entry. All other keys (keybinding, sound, Cloth Config, Trinkets slot label,
  * advancements) have no registry object and are added as plain string pairs.
  */
 public class SatchelsLanguageProvider extends FabricLanguageProvider {
-    public SatchelsLanguageProvider(FabricDataOutput output, CompletableFuture<HolderLookup.Provider> registriesFuture) {
+    public SatchelsLanguageProvider(FabricPackOutput output, CompletableFuture<HolderLookup.Provider> registriesFuture) {
         super(output, "en_us", registriesFuture);
     }
 
@@ -32,7 +32,9 @@ public class SatchelsLanguageProvider extends FabricLanguageProvider {
 
         translationBuilder.add("key.satchels.toggle_satchel", "Toggle Satchel");
         translationBuilder.add("sound.satchels.satchel_rustle", "Satchel Rustles");
-        translationBuilder.add("accessories.slot.satchel", "Satchel");
+        // Trinkets Updated slot label — key format is trinkets.slot.<group>.<slot>,
+        // matches data/trinkets/slots/chest/satchel.json (was accessories.slot.satchel on 1.21.1).
+        translationBuilder.add("trinkets.slot.chest.satchel", "Satchel");
 
         // Advancement titles / descriptions (SatchelsAdvancementProvider).
         translationBuilder.add("satchels.advancements.root.title", "Satchels");

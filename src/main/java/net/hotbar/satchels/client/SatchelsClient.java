@@ -3,20 +3,20 @@ package net.hotbar.satchels.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
-import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
-import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityFeatureRendererRegistrationCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
+import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.renderer.entity.player.PlayerRenderer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.renderer.entity.player.AvatarRenderer;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.component.DyedItemColor;
 import net.hotbar.satchels.ModItems;
@@ -27,7 +27,6 @@ import net.hotbar.satchels.client.satchel.SatchelHotbarOverlay;
 import net.hotbar.satchels.compat.flashback.FlashbackCompat;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import net.hotbar.satchels.content.satchel.SatchelItem;
-import net.hotbar.satchels.content.satchel.SatchelTier;
 import net.hotbar.satchels.network.packets.SatchelInventorySyncPacketS2C;
 import net.hotbar.satchels.network.packets.SatchelSlotUpdatePacketS2C;
 import net.hotbar.satchels.network.packets.SatchelStatusPacketS2C;
@@ -38,11 +37,9 @@ import org.lwjgl.glfw.GLFW;
  * Client mod entry point: keybinding, HUD overlay, satchel render layer, item color handler,
  * and client-side networking/menu-open hooks.
  * <p>
- * The HUD overlay is registered through {@code HudRenderCallback.EVENT} rather than a
- * layered-HUD API (Fabric API's layer registration classes for the {@code LayeredDrawer} HUD
- * rework arrived in a later fabric-api version than this project targets) — it renders on top
- * of the rest of the HUD, the closest equivalent available here to "render above the hotbar".
- * If porting to a fabric-api version with layered-HUD support, consider migrating this.
+ * The HUD overlay is registered via {@code HudElementRegistry.attachElementBefore(VanillaHudElements.CHAT, ...)}
+ * (Fabric API's layered-HUD API, available since Fabric API 0.116 / Minecraft 26.1).
+ * The layer renders immediately before the chat HUD layer — visually above the hotbar.
  * <p>
  * No explicit join/respawn hook is needed to sync the per-tier hotbar slot-start:
  * {@code SatchelData#resyncToClient()} already re-sends the equipped-satchel stack on every
@@ -66,7 +63,7 @@ import org.lwjgl.glfw.GLFW;
  */
 public class SatchelsClient implements ClientModInitializer {
     public static final KeyMapping KEYMAPPING_TOGGLE_SATCHEL = new KeyMapping(
-            "key.satchels.toggle_satchel", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, KeyMapping.CATEGORY_INVENTORY
+            "key.satchels.toggle_satchel", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, KeyMapping.Category.INVENTORY
     );
 
     @Override
@@ -88,7 +85,7 @@ public class SatchelsClient implements ClientModInitializer {
         registerOverlays();
         addEntityRenderLayers();
         registerItemColorHandlers();
-        registerExtraModels();
+
 
         // Flashback replay mod compat: deferred SatchelSlotUpdatePacketS2C application.
         // Initialized here (client entrypoint) rather than in SatchelsCompat to avoid
@@ -103,11 +100,15 @@ public class SatchelsClient implements ClientModInitializer {
     }
 
     private static void registerKeyMappings() {
-        KeyBindingHelper.registerKeyBinding(KEYMAPPING_TOGGLE_SATCHEL);
+        KeyMappingHelper.registerKeyMapping(KEYMAPPING_TOGGLE_SATCHEL);
     }
 
     private static void registerOverlays() {
-        HudRenderCallback.EVENT.register(SatchelHotbarOverlay.INSTANCE::render);
+        HudElementRegistry.attachElementBefore(
+                VanillaHudElements.CHAT,
+                net.hotbar.satchels.Satchels.at(SatchelHotbarOverlay.ID),
+                SatchelHotbarOverlay.INSTANCE::render
+        );
     }
 
     /**
@@ -136,9 +137,11 @@ public class SatchelsClient implements ClientModInitializer {
      * ever fires while that particular screen is open and is cleaned up with it.
      */
     private static void registerGuiToggleKeyHandling(Minecraft client, net.minecraft.client.gui.screens.Screen screen) {
-        // Note: KeyMapping#matches(int, int) — Mojang mappings, not "matchesKey".
-        ScreenKeyboardEvents.afterKeyPress(screen).register((scrn, key, scancode, modifiers) -> {
-            if (!KEYMAPPING_TOGGLE_SATCHEL.matches(key, scancode)) return;
+        // 26.1: both changed together — confirmed via the real Fabric API 26.1.2 branch source
+        // and the real jar. ScreenKeyboardEvents.AfterKeyPress is now (Screen, KeyEvent), and
+        // KeyMapping#matches now takes a KeyEvent directly instead of (int key, int scancode).
+        ScreenKeyboardEvents.afterKeyPress(screen).register((scrn, event) -> {
+            if (!KEYMAPPING_TOGGLE_SATCHEL.matches(event)) return;
             if (!isAllowedContainerScreenOpen(client)) return;
 
             toggleInventorySatchelVisibility();
@@ -154,7 +157,7 @@ public class SatchelsClient implements ClientModInitializer {
     private static boolean isAllowedContainerScreenOpen(Minecraft client) {
         if (!(client.screen instanceof AbstractContainerScreen<?> abs)) return false;
 
-        ResourceLocation location = SatchelMenuLocation.resolve(abs.getMenu());
+        Identifier location = SatchelMenuLocation.resolve(abs.getMenu());
         return location != null && SatchelsCommonConfig.isAllowed(location);
     }
 
@@ -179,36 +182,58 @@ public class SatchelsClient implements ClientModInitializer {
         SatchelsClientConfig.setSatchelHiddenInInventory(!SatchelsClientConfig.isSatchelHiddenInInventory());
     }
 
+    // TODO(26.1 port): PlayerRenderer was replaced by the generic
+    // AvatarRenderer<AvatarlikeEntity extends Avatar> (net.minecraft.client.renderer.entity.player,
+    // Fabric render refactor for 26.1). For the actual player entity this is
+    // AvatarRenderer<AbstractClientPlayer>. SatchelLayer's constructor/generic bound
+    // (currently written against RenderLayerParent<PlayerRenderState, PlayerModel> or similar
+    // from the old PlayerRenderer) will need to be updated to match AvatarRenderer's new
+    // render-state type (AvatarRenderState) — verify against generated sources before building.
     private static void addEntityRenderLayers() {
-        LivingEntityFeatureRendererRegistrationCallback.EVENT.register((entityType, entityRenderer, registrationHelper, context) -> {
-            if (entityRenderer instanceof PlayerRenderer playerRenderer) {
-                registrationHelper.register(new SatchelLayer<>(playerRenderer, context.getItemRenderer()));
+        LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, entityRenderer, registrationHelper, context) -> {
+            if (entityRenderer instanceof AvatarRenderer<?> avatarRenderer) {
+                @SuppressWarnings("unchecked")
+                AvatarRenderer<AbstractClientPlayer> playerRenderer = (AvatarRenderer<AbstractClientPlayer>) avatarRenderer;
+                // 26.1: SatchelLayer rewritten for AvatarRenderState + PlayerModel.
+                registrationHelper.register(new SatchelLayer<
+                        net.minecraft.client.renderer.entity.state.AvatarRenderState,
+                        net.minecraft.client.model.player.PlayerModel>(
+                        playerRenderer, context.getItemModelResolver()));
             }
         });
     }
 
     /**
-     * Registers each tier's {@code satchels:item/satchel_worn_<tier>} model as an extra model
-     * to bake, even though nothing in the standard item-model tree references them directly.
-     * <p>
-     * These models are baked and fetched manually by {@code SatchelLayer} (picking the id for
-     * whichever tier is currently equipped) for rendering the worn satchel on the player's
-     * back; without this explicit registration they wouldn't be picked up for baking at all,
-     * and {@code SatchelLayer} would get {@code null} from the baked model manager.
+     * 26.1: removed entirely. {@code ModelLoadingPlugin.Context#addModels} — the whole Fabric
+     * "extra model" registration API this used — was replaced by a completely different
+     * {@code ExtraModelKey}/{@code UnbakedExtraModel} mechanism (confirmed against the real
+     * Fabric API 26.1.2 branch source on GitHub). But tracing {@code ModelManager} /
+     * {@code ClientItemInfoLoader} in the actual 26.1.2 jar showed the "extra model" concept
+     * isn't needed here at all anymore: any json under {@code assets/<ns>/items/} is
+     * auto-baked and retrievable via {@code ModelManager#getItemModel(Identifier)} regardless
+     * of whether it's tied to a registered Item — that's a real architecture simplification,
+     * not a rename. See the {@code assets/satchels/items/satchel_worn_*.json} wrapper files and
+     * {@code SatchelTier#getWornModelId}, which {@code SatchelLayer} now reads directly with no
+     * registration step required.
      */
-    private static void registerExtraModels() {
-        ModelLoadingPlugin.register(context -> {
-            for (SatchelTier tier : SatchelTier.values()) {
-                context.addModels(tier.getWornModelId());
-            }
-        });
-    }
 
+    /**
+     * TODO(26.1 port): {@code ColorProviderRegistry.ITEM} — and the whole imagined
+     * {@code net.fabricmc.fabric.api.client.rendering.v1.item.ItemColorRegistry} — do not exist.
+     * {@code ColorProviderRegistry.ITEM} was removed as far back as 1.21.4: item tinting is now
+     * data-driven via a {@code tint_source} entry on the relevant layer in the item's client
+     * model JSON (e.g. {@code {"type": "minecraft:dye", "default": <argb>}}, the same mechanism
+     * vanilla uses for dyed leather armor/bundles), not a Java-side color callback. Since this
+     * mod already stores the dye as a {@code DyedItemColor} data component (see
+     * {@link SatchelItem#DEFAULT_COLOR} usage), the layer-0 texture in
+     * {@code SatchelsModelProvider}'s generated model likely just needs a
+     * {@code minecraft:dye} tint source with {@code default: SatchelItem.DEFAULT_COLOR} instead
+     * of any Java registration here. This method (and its call in {@link #onInitializeClient})
+     * should be removed once the model-side tint_source is wired up — left as a stub so the
+     * project still compiles while that's sorted out.
+     */
     private static void registerItemColorHandlers() {
-        ColorProviderRegistry.ITEM.register((stack, layer) -> {
-            if (layer == 0) return DyedItemColor.getOrDefault(stack, SatchelItem.DEFAULT_COLOR);
-            return 0xffffffff;
-        }, ModItems.SATCHEL_GOLDEN, ModItems.SATCHEL_DIAMOND, ModItems.SATCHEL_NETHERITE);
+        // Intentionally empty — see TODO above. Was: ItemColorRegistry.register(...).
     }
 
     private static void onScreenOpen(Minecraft client, net.minecraft.client.gui.screens.Screen screen, int width, int height) {

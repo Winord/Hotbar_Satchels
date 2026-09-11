@@ -24,9 +24,6 @@
     "jei_mod_plugin": [
       "net.hotbar.satchels.compat.recipeviewer.SatchelsJEIPlugin"
     ],
-    "emi": [
-      "net.hotbar.satchels.compat.recipeviewer.SatchelsEMIPlugin"
-    ],
     "fabric-datagen": [
       "net.hotbar.satchels.datagen.SatchelsDataGenerator"
     ]
@@ -40,16 +37,15 @@
   ],
   "accessWidener": "satchels.accesswidener",
   "depends": {
-    "fabricloader": ">=0.16.0",
+    "fabricloader": ">=0.19.0",
     "fabric-api": "*",
-    "minecraft": "1.21.1",
-    "java": ">=21"
+    "minecraft": "~26.1",
+    "java": ">=25"
   },
   "suggests": {
-    "accessories": "*",
+    "trinkets_updated": "*",
     "raised": "*",
     "jei": "*",
-    "emi": "*",
     "modmenu": "*",
     "flashback": "*"
   },

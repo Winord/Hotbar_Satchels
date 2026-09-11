@@ -1,6 +1,6 @@
 package net.hotbar.satchels.content.satchel;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.hotbar.satchels.Satchels;
 
 /**
@@ -64,16 +64,25 @@ public enum SatchelTier {
     }
 
     /** The item-icon model's layer1 (clip) texture, e.g. {@code satchels:item/satchel_clip_golden}. */
-    public ResourceLocation getClipTexture() {
+    public Identifier getClipTexture() {
         return Satchels.at("item/satchel_clip_" + textureSuffix);
     }
 
     /**
-     * Id of this tier's "worn on the back" model, e.g. {@code satchels:item/satchel_worn_golden}
-     * — a static Blockbench-geometry model (not datagen'd, see {@code SatchelsModelProvider}),
-     * baked as an "extra model" and fetched directly by {@code SatchelLayer}.
+     * Id of this tier's "worn on the back" model, e.g. {@code satchels:satchel_worn_golden}
+     * — a static Blockbench-geometry model (not datagen'd, see {@code SatchelsModelProvider}).
+     * <p>
+     * 26.1: the old Fabric "extra model" registration API ({@code ModelLoadingPlugin.Context
+     * #addModels}) was removed with no direct replacement. Traced {@code ModelManager} /
+     * {@code ClientItemInfoLoader} in the real jar and confirmed any json under
+     * {@code assets/<ns>/items/} is auto-baked and retrievable via
+     * {@code ModelManager#getItemModel(Identifier)} regardless of whether it's tied to a
+     * registered Item — so the extra-model dance isn't needed at all anymore. This id must
+     * therefore point at the client-item wrapper file under {@code assets/satchels/items/}
+     * (NOT the raw geometry file under {@code models/item/}, which is referenced *from inside*
+     * that wrapper instead) — see {@code assets/satchels/items/satchel_worn_golden.json} etc.
      */
-    public ResourceLocation getWornModelId() {
-        return Satchels.at("item/satchel_worn_" + textureSuffix);
+    public Identifier getWornModelId() {
+        return Satchels.at("satchel_worn_" + textureSuffix);
     }
 }

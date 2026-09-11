@@ -266,7 +266,14 @@ public class SatchelData implements NbtSerializable<CompoundTag> {
         tag.put(KEY_INVENTORY, inventory);
 
         if (!satchelSlotStack.isEmpty()) {
-            tag.put(KEY_SLOT_ITEM, satchelSlotStack.save(provider, new CompoundTag()));
+            // 26.1: ItemStack.save(Provider, CompoundTag) removed. ItemStack.CODEC is already a
+            // Codec<ItemStack> (not a MapCodec needing .codec()) — encode directly.
+            // net.minecraft.Util moved to net.minecraft.util.Util, and logAndPause was renamed
+            // to logAndPauseIfInIde — both confirmed against the real 26.1.2 jar.
+            ItemStack.CODEC
+                .encodeStart(provider.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), satchelSlotStack)
+                .resultOrPartial(e -> net.minecraft.util.Util.logAndPauseIfInIde("SatchelData save slot: " + e))
+                .ifPresent(encoded -> tag.put(KEY_SLOT_ITEM, encoded));
         }
 
         return tag;
@@ -274,20 +281,26 @@ public class SatchelData implements NbtSerializable<CompoundTag> {
 
     @Override
     public void deserializeNBT(@NotNull HolderLookup.Provider provider, @NotNull CompoundTag tag) {
-        this.active = tag.getBoolean(KEY_ACTIVE);
+        this.active = tag.getBoolean(KEY_ACTIVE).orElse(false);
 
         // Equipped stack first: this resizes satchelInventory to the right tier (via
         // updateTierFromStack) *before* the inventory contents below are loaded into it —
         // loading order matters, otherwise slots past the default zero-size would be silently
         // dropped by SatchelInventory#deserializeNBT's bounds check.
         if (tag.contains(KEY_SLOT_ITEM)) {
-            ItemStack.parse(provider, tag.getCompound(KEY_SLOT_ITEM)).ifPresent(stack -> {
-                this.satchelSlotStack = stack;
-                this.updateTierFromStack(stack);
-            });
+            // 26.1: ItemStack.parse(Provider, Tag) removed. Decode via ItemStack.CODEC.
+            // CompoundTag.getOptional(String) is private in 26.1 (confirmed via javap) — tag.get(String)
+            // is the public accessor; safe to call unguarded here since tag.contains(...) already passed.
+            ItemStack.CODEC
+                .parse(provider.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), tag.get(KEY_SLOT_ITEM))
+                .resultOrPartial(e -> {})
+                .ifPresent(stack -> {
+                    this.satchelSlotStack = stack;
+                    this.updateTierFromStack(stack);
+                });
         }
 
-        this.satchelInventory.deserializeNBT(provider, tag.getCompound(KEY_INVENTORY));
+        this.satchelInventory.deserializeNBT(provider, tag.getCompound(KEY_INVENTORY).orElseGet(CompoundTag::new));
     }
     // endregion
 }

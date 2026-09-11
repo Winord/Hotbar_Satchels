@@ -1,6 +1,6 @@
 package net.hotbar.satchels.mixin.client.screen;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.HorseInventoryScreen;
 import net.minecraft.network.chat.Component;
@@ -20,7 +20,7 @@ public abstract class HorseInventoryScreenMixin<T extends AbstractContainerMenu>
     private final ScreenWithSatchel satchels$screenWithSatchel = new ScreenWithSatchel();
 
     @Inject(method = "renderBg", at = @At("HEAD"))
-    public void satchels$renderSatchelInventory(GuiGraphics guiGraphics, float f, int i, int j, CallbackInfo ci) {
+    public void satchels$renderSatchelInventory(GuiGraphicsExtractor guiGraphics, float f, int i, int j, CallbackInfo ci) {
         satchels$screenWithSatchel.renderSatchelInventory(guiGraphics, this.leftPos, this.topPos, this.imageHeight);
     }
 }

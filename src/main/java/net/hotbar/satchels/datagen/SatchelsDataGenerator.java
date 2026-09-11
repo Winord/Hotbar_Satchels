@@ -14,7 +14,9 @@ import net.fabricmc.fabric.api.datagen.v1.FabricDataGenerator;
  * <p>
  * <b>Generated here:</b> {@link SatchelsRecipeProvider} (the recipe plus its automatic
  * unlock advancement), {@link SatchelsItemTagProvider} (the {@code minecraft:dyeable} and
- * {@code satchels:satchels} tags, plus the cross-mod {@code accessories:satchel} tag),
+ * {@code satchels:satchels} tags, plus the cross-mod {@code trinkets:chest/satchel} slot tag —
+ * {@code accessories:satchel} on the 1.21.1 branch, replaced on 26.x since Trinkets Updated
+ * replaces Accessories, see {@code satchels-port-decisions-26_1.md} §3),
  * {@link SatchelsLanguageProvider} ({@code assets/satchels/lang/en_us.json} — only the source
  * language is generated; {@code fr_ca.json}/{@code fr_fr.json} stay as hand-written community
  * translations, see the {@link SatchelsLanguageProvider} javadoc for details),
@@ -26,21 +28,25 @@ import net.fabricmc.fabric.api.datagen.v1.FabricDataGenerator;
  * custom Blockbench geometry outside what {@code ItemModelGenerators} can produce — see its
  * javadoc for details).
  * <p>
- * <b>Deliberately left as static json instead:</b>
+ * <b>Deliberately left as static json instead (26.x branch):</b>
  * <ul>
- *   <li>{@code data/satchels/accessories/{slot,entity}/satchel.json} and
- *       {@code data/accessories/accessories/group/chest.json} — Accessories does have its own
- *       Fabric datagen API ({@code SlotDataProvider}/{@code EntityBindingProvider}/
- *       {@code GroupDataProvider} in {@code io.wispforest.accessories.api.data.providers.*}),
- *       but as of {@code 1.1.0-beta.53+1.21.1} its own official usage example
- *       ({@code AccessoriesDataGenEntrypoint} in the library itself) contains an
- *       {@code if (true) return;} — i.e. even the library's own authors don't consider this
- *       path production-ready yet. Our static json has already been checked against the real
- *       schema ({@code SlotTypeLoader}/{@code EntitySlotLoader}) during the port and confirmed
- *       working in a real build, so swapping it for an unstable beta API isn't worth the risk
- *       right now. Worth revisiting once Accessories' datagen providers stabilize.</li>
+ *   <li>{@code data/trinkets/entities/player.json} and {@code data/trinkets/slots/chest/satchel.json}
+ *       — Trinkets Updated has no known stable Fabric datagen provider API (unlike its
+ *       {@code tags/items/*} slot-tag files, which are just ordinary item tags and so are
+ *       generated normally via {@link SatchelsItemTagProvider}). These two files are small,
+ *       rarely change, and were checked against the real
+ *       ({@code data/trinkets/entities/[id].json} / {@code data/trinkets/slots/[group]/[slot].json})
+ *       schema documented at
+ *       {@code github.com/emilyploszaj/trinkets/wiki/Trinkets-Data-Formats} — the format
+ *       Trinkets Updated inherited from upstream Trinkets. Worth revisiting if Patbox's fork
+ *       ever ships its own datagen provider.</li>
  *   <li>{@code satchel_worn.json} — see {@link SatchelsModelProvider}'s javadoc.</li>
  * </ul>
+ * <p>
+ * <b>1.21.1 branch note:</b> that branch instead ships static
+ * {@code data/satchels/accessories/{slot,entity}/satchel.json} and
+ * {@code data/accessories/accessories/group/chest.json} for Accessories (not present on 26.x —
+ * see {@code satchels-port-decisions-26_1.md} §3 for why Accessories was dropped for this port).
  */
 public class SatchelsDataGenerator implements DataGeneratorEntrypoint {
     @Override

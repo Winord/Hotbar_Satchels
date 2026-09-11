@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version "${loom_version}"
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
 
@@ -26,24 +26,31 @@ repositories {
         }
     }
 
-    maven { // Accessories
-        name = "Wisp Forest"
-        url = "https://maven.wispforest.io/releases"
+    maven {
+        name = "Nucleoid"
+        url = "https://maven.nucleoid.xyz/"
     }
-    maven { // Accessories transitive dep (endec)
-        name = "su5ed"
-        url = "https://maven.su5ed.dev/releases"
+
+    maven { // Trinkets Updated — required transitive deps
+        name = "TerraformersMC"
+        url = "https://maven.terraformersmc.com/"
     }
+    maven { // Trinkets Updated — Yumi Framework
+        name = "Ladysnake"
+        url = "https://maven.ladysnake.org/releases"
+    }
+
     maven { // JEI
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
     }
-    maven { // EMI
-        name = "TerraformersMC"
-        url = "https://maven.terraformersmc.com/"
-    }
-    maven { // Cloth Config
+
+    maven { // Cloth Config, Mod Menu
         url = "https://maven.shedaniel.me/"
+    }
+
+    maven { // Mod Menu
+        url = "https://maven.terraformersmc.com/"
     }
 }
 
@@ -77,25 +84,27 @@ sourceSets {
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    // No mappings line — Minecraft 26.1+ ships an unobfuscated jar; Loom 1.15 detects this
+    // automatically and rejects officialMojangMappings() in that environment.
+    implementation "net.fabricmc:fabric-loader:${loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 
-    modImplementation "io.wispforest:accessories-fabric:${accessories_version}"
-    modImplementation "maven.modrinth:raised:${raised_version}"
+    // Trinkets Updated — replaces Accessories on 26.x (Accessories has no Fabric build on 26.x).
+    // MIT licence, author Patbox. modId = "trinkets_updated"
+    implementation "eu.pb4:trinkets:${trinkets_version}"
+
+    implementation "maven.modrinth:raised:${raised_version}"
 
     // JEI — optional integration; compile against API only, runtime for dev runs
-    modCompileOnly "mezz.jei:jei-${minecraft_version}-fabric-api:${jei_version}"
-    modRuntimeOnly "mezz.jei:jei-${minecraft_version}-fabric:${jei_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-fabric-api:${jei_version}"
+    runtimeOnly "mezz.jei:jei-${minecraft_version}-fabric:${jei_version}"
 
-    // EMI — optional integration; uses :api classifier
-    modCompileOnly "dev.emi:emi-fabric:${emi_version}:api"
-    modRuntimeOnly "dev.emi:emi-fabric:${emi_version}"
+    // EMI removed — development stopped at 1.21.1 (archived in emi-compat-archive/).
 
     // Mod Menu — compile-only; implements ModMenuApi for config screen registration
-    modCompileOnly "com.terraformersmc:modmenu:${modmenu_version}"
+    compileOnly "com.terraformersmc:modmenu:${modmenu_version}"
 
-    modImplementation("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}") {
+    implementation("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}") {
         exclude group: "net.fabricmc.fabric-api"
     }
 
@@ -111,13 +120,13 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    it.options.release = 21
+    it.options.release = 25
 }
 
 java {
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_21
-    targetCompatibility = JavaVersion.VERSION_21
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
 }
 
 jar {

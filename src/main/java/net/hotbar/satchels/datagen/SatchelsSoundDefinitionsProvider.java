@@ -2,11 +2,11 @@ package net.hotbar.satchels.datagen;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import net.fabricmc.fabric.api.datagen.v1.FabricDataOutput;
+import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.hotbar.satchels.Satchels;
 import org.jetbrains.annotations.NotNull;
 
@@ -23,11 +23,11 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  * <b>Why not the {@link net.fabricmc.fabric.api.datagen.v1.provider.FabricLanguageProvider}-style
  * "createPathProvider(Target, kind).json(id)" pattern:</b> that pattern is built for one file
- * *per ResourceLocation* (e.g. {@code lang/<code>.json}, {@code tags/item/<path>.json}).
+ * *per Identifier* (e.g. {@code lang/<code>.json}, {@code tags/item/<path>.json}).
  * {@code sounds.json} is a single file for the whole mod directly under
  * {@code assets/<modid>/}, with no intermediate subdirectory and no per-id association, so the
  * path is built directly via {@link PackOutput#getOutputFolder(PackOutput.Target)} (a public
- * method on {@link PackOutput} itself, which {@link FabricDataOutput} extends).
+ * method on {@link PackOutput} itself, which {@link FabricPackOutput} extends).
  * <p>
  * <b>Entry schema (the "type" field in vanilla sounds.json):</b>
  * <ul>
@@ -44,9 +44,9 @@ import java.util.concurrent.CompletableFuture;
  * duplicate was removed.
  */
 public class SatchelsSoundDefinitionsProvider implements DataProvider {
-    private final FabricDataOutput output;
+    private final FabricPackOutput output;
 
-    public SatchelsSoundDefinitionsProvider(FabricDataOutput output) {
+    public SatchelsSoundDefinitionsProvider(FabricPackOutput output) {
         this.output = output;
     }
 
@@ -101,7 +101,7 @@ public class SatchelsSoundDefinitionsProvider implements DataProvider {
      * {@code assets/<namespace>/sounds/<path>.ogg} (defaults to type {@code "sound"}, no
      * wrapper object needed).
      */
-    private static JsonObject fileSoundDefinition(ResourceLocation soundId, String subtitleKey) {
+    private static JsonObject fileSoundDefinition(Identifier soundId, String subtitleKey) {
         JsonArray sounds = new JsonArray();
         sounds.add(soundId.toString());
 

@@ -1,9 +1,8 @@
 package net.hotbar.satchels.compat;
 
 import net.fabricmc.loader.api.FabricLoader;
-import net.hotbar.satchels.compat.accessories.AccessoriesCompat;
-import net.hotbar.satchels.compat.quark.QuarkCompat;
 import net.hotbar.satchels.compat.raised.RaisedCompat;
+import net.hotbar.satchels.compat.trinkets.TrinketsCompat;
 import net.hotbar.satchels.compat.vanilla.VanillaCompat;
 import org.jetbrains.annotations.Nullable;
 
@@ -16,17 +15,15 @@ import java.util.function.Supplier;
  * condition) at {@link #initialize()} time, and its {@link CompatEntrypoint} runs only if the
  * companion mod is actually present.
  * <p>
- * {@code VANILLA} only initializes when Accessories is absent, since Accessories replaces the
- * vanilla equipment-slot handling. {@link QuarkCompat}/{@code QUARK} stays in the enum but
- * never actually activates — Quark has no Fabric port, so {@code isLoaded("quark")} is always
- * {@code false}.
+ * <b>26.x port note:</b> {@code ACCESSORIES}/{@code AccessoriesCompat} was replaced by
+ * {@code TRINKETS}/{@link TrinketsCompat} — Accessories has no Fabric build on 26.x (see
+ * {@code satchels-port-decisions-26_1.md} §3). The mod id checked against
+ * {@link FabricLoader#isModLoaded(String)} is {@code trinkets_updated}.
  */
 public enum SatchelsCompat {
-    VANILLA("minecraft", VanillaCompat::new, () -> !FabricLoader.getInstance().isModLoaded("accessories")),
-    // for vanilla slots    ACCESSORIES("accessories", AccessoriesCompat::new),
-    ACCESSORIES("accessories", AccessoriesCompat::new),
-    RAISED("raised", RaisedCompat::new),
-    QUARK("quark", QuarkCompat::new);
+    VANILLA("minecraft", VanillaCompat::new, () -> !FabricLoader.getInstance().isModLoaded("trinkets_updated")),
+    TRINKETS("trinkets_updated", TrinketsCompat::new),
+    RAISED("raised", RaisedCompat::new);
 
     final String id;
     boolean isLoaded;

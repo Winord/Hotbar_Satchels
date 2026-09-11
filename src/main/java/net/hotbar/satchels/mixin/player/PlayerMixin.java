@@ -10,7 +10,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.minecraft.world.level.GameRules;
+import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.level.Level;
 import net.hotbar.satchels.compat.SatchelsCompat;
 import net.hotbar.satchels.content.satchel.IHaveSatchelData;
@@ -60,7 +60,7 @@ public abstract class PlayerMixin extends LivingEntity implements IHaveSatchelDa
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
     public void satchels$readAdditionalData(CompoundTag compoundTag, CallbackInfo ci) {
-        satchels$satchelData.deserializeNBT(this.registryAccess(), compoundTag.getCompound(SatchelData.KEY_SATCHEL));
+        satchels$satchelData.deserializeNBT(this.registryAccess(), compoundTag.getCompound(SatchelData.KEY_SATCHEL).orElseGet(CompoundTag::new));
     }
 
     // Satchel Inventory Hooks
@@ -79,22 +79,25 @@ public abstract class PlayerMixin extends LivingEntity implements IHaveSatchelDa
     @Inject(method = "dropEquipment", at = @At("TAIL"))
     public void satchels$dropSatchelEquipment(CallbackInfo ci) {
         SatchelData satchelData = SatchelData.get((Player) (Object) this);
-        if (!this.level().getGameRules().getBoolean(GameRules.RULE_KEEPINVENTORY)) {
+        if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
+                // 26.1: GameRules.getBoolean(GameRule<Boolean>) removed; confirmed via javap the
+                // instance now exposes a generic <T> T get(GameRule<T>) instead.
+                && !serverLevel.getGameRules().get(GameRules.KEEP_INVENTORY)) {
             // Always drop the satchel's stored contents ourselves — nothing else knows
             // about them, regardless of which compat currently manages the equipped slot.
             satchelData.getSatchelInventory().dropAll(true);
 
             // The equipped-satchel *bag item* itself is a different story. Under
-            // AccessoriesCompat, satchelData.satchelSlotStack is only a mirror of what's
-            // actually equipped (see AccessoriesCompat#accessoryChangeMaybeSatchel) — the
-            // real stack lives in AccessoriesCapability's own container, and Accessories
-            // drops its equipped accessories on death itself. Dropping the mirrored copy
+            // TrinketsCompat, satchelData.satchelSlotStack is only a mirror of what's
+            // actually equipped (see TrinketsCompat#equipmentChangedMaybeSatchel) — the
+            // real stack lives in Trinkets' own TrinketAttachment/inventory, and Trinkets
+            // drops its equipped trinkets on death itself. Dropping the mirrored copy
             // here too would duplicate the bag. Only VanillaCompat has no other system
             // backing the equipped slot (SatchelEquipmentSlot has no backing Container —
             // SatchelData is the sole source of truth there), so only that path needs us
-            // to drop it manually. SatchelsCompat.VANILLA never loads while Accessories is
-            // present, so this check alone is enough to tell the two paths apart.
-            if (!SatchelsCompat.ACCESSORIES.isLoaded()) {
+            // to drop it manually. SatchelsCompat.VANILLA never loads while Trinkets Updated
+            // is present, so this check alone is enough to tell the two paths apart.
+            if (!SatchelsCompat.TRINKETS.isLoaded()) {
                 ItemStack slotStack = satchelData.getSatchelSlotStack();
                 if (!slotStack.isEmpty()) satchelData.getPlayer().drop(slotStack, true, false);
             }

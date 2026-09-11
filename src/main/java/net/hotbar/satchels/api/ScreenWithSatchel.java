@@ -2,11 +2,11 @@ package net.hotbar.satchels.api;
 
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.util.FastColor;
+import net.minecraft.util.ARGB;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.hotbar.satchels.ModTags;
@@ -19,6 +19,7 @@ import net.hotbar.satchels.content.satchel.SatchelEquipmentSlot;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import net.hotbar.satchels.content.satchel.SatchelItem;
 import net.hotbar.satchels.content.satchel.SatchelTier;
+import net.minecraft.client.renderer.RenderPipelines;
 import org.jetbrains.annotations.ApiStatus;
 
 /**
@@ -58,7 +59,7 @@ public class ScreenWithSatchel {
      * @param top The position of the top edge of your screen.
      * @param height The height of your screen.
      */
-    public void renderSatchelInventory(GuiGraphics graphics, int left, int top, int height) {
+    public void renderSatchelInventory(GuiGraphicsExtractor graphics, int left, int top, int height) {
         renderSatchelInventory(graphics, left, top, height, false);
     }
 
@@ -76,7 +77,7 @@ public class ScreenWithSatchel {
      *                     Reuses the exact same 300ms tween as an equip/unequip state change,
      *                     since both are just changes to the same {@code enabled} boolean below.
      */
-    public void renderSatchelInventory(GuiGraphics graphics, int left, int top, int height, boolean forceHidden) {
+    public void renderSatchelInventory(GuiGraphicsExtractor graphics, int left, int top, int height, boolean forceHidden) {
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
 
@@ -116,20 +117,15 @@ public class ScreenWithSatchel {
         int satchelTint = SatchelAccess.getSatchelTint(player);
         if (satchelTint != -1) lastColor = satchelTint;
 
-        graphics.setColor(
-                FastColor.ARGB32.red(lastColor) / 255f,
-                FastColor.ARGB32.green(lastColor) / 255f,
-                FastColor.ARGB32.blue(lastColor) / 255f,
-                FastColor.ARGB32.alpha(lastColor) / 255f
-        );
-        graphics.blitSprite(sprite.id(), left + 2 + satchelXOffset, top + height - (int) satchelYOffset - 1, sprite.width(), sprite.height());
-        graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        // 26.1: setColor() removed — pass tint as ARGB int to blitSprite directly.
+        int invTint = ARGB.color(ARGB.alpha(lastColor), ARGB.red(lastColor), ARGB.green(lastColor), ARGB.blue(lastColor));
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite.id(), left + 2 + satchelXOffset, top + height - (int) satchelYOffset - 1, sprite.width(), sprite.height(), invTint);
     }
 
     /**
      * The current, frame-by-frame animated Y offset of the inventory-screen satchel row (0 =
      * fully shown, {@link #INVENTORY_HIDE_OFFSET} = fully retracted). Updated every call to
-     * {@link #renderSatchelInventory(GuiGraphics, int, int, int, boolean)}. {@code
+     * {@link #renderSatchelInventory(GuiGraphicsExtractor, int, int, int, boolean)}. {@code
      * InventoryScreenMixin} reads this each frame to slide {@code SatchelInventorySlot} item
      * icons in lockstep with the background sprite, instead of them popping in/out — the same
      * way {@code SatchelHotbarOverlay} slides its background and items together inside one
@@ -186,7 +182,7 @@ public class ScreenWithSatchel {
      * For use in the vanilla slot handler only.
      */
     @ApiStatus.Internal
-    public void renderSatchelSlot(GuiGraphics graphics, int left, int top, int width, int height) {
+    public void renderSatchelSlot(GuiGraphicsExtractor graphics, int left, int top, int width, int height) {
         if (!SatchelsCompat.VANILLA.isLoaded()) return;
 
         Player player = Minecraft.getInstance().player;
@@ -231,8 +227,9 @@ public class ScreenWithSatchel {
 
         int x = left + width + (int) slotXOffset - 1;
         int y = top + height - 30;
-        graphics.blitSprite(ModSprites.SATCHEL_SLOT_INVENTORY, x, y, 27, 28);
-        if (slotHeld.isEmpty()) graphics.blitSprite(ModSprites.SATCHEL_SLOT_ICON, x + 5, y + 6, 16, 16);
-        graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        // 26.1: blitSprite requires RenderPipeline as first arg.
+        graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ModSprites.SATCHEL_SLOT_INVENTORY, x, y, 27, 28);
+        if (slotHeld.isEmpty()) graphics.blitSprite(RenderPipelines.GUI_TEXTURED, ModSprites.SATCHEL_SLOT_ICON, x + 5, y + 6, 16, 16);
+        // 26.1: setColor() removed — not needed after blitSprite (no persistent state).
     }
 }

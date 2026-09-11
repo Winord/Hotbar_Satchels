@@ -4,13 +4,13 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.HorseInventoryMenu;
 import net.minecraft.world.inventory.InventoryMenu;
 
 /**
- * Resolves the {@code allowed_menus} {@link ResourceLocation} key for a given open menu.
+ * Resolves the {@code allowed_menus} {@link Identifier} key for a given open menu.
  * <p>
  * Factored out of {@code AbstractContainerScreenMixin.satchels$getMenuLocation} (11.1) so both
  * that mixin's rendering/click gates and {@code SatchelsClient}'s context-dependent {@code V}
@@ -22,11 +22,11 @@ public final class SatchelMenuLocation {
     private SatchelMenuLocation() {
     }
 
-    public static ResourceLocation resolve(AbstractContainerMenu menu) {
+    public static Identifier resolve(AbstractContainerMenu menu) {
         return switch (menu) {
-            case InventoryMenu ignored -> ResourceLocation.withDefaultNamespace("inventory");
-            case CreativeModeInventoryScreen.ItemPickerMenu ignored -> ResourceLocation.withDefaultNamespace("creative_menu");
-            case HorseInventoryMenu ignored -> ResourceLocation.withDefaultNamespace("horse");
+            case InventoryMenu ignored -> Identifier.withDefaultNamespace("inventory");
+            case CreativeModeInventoryScreen.ItemPickerMenu ignored -> Identifier.withDefaultNamespace("creative_menu");
+            case HorseInventoryMenu ignored -> Identifier.withDefaultNamespace("horse");
             case null -> null;
             default -> {
                 try {
