@@ -1,9 +1,6 @@
 package net.hotbar.satchels.mixin.player;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.sugar.Local;
 import net.hotbar.satchels.client.SatchelClientBridge;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.Container;
@@ -11,7 +8,6 @@ import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.BlockState;
 import net.hotbar.satchels.network.packets.ToggleSatchelPacketC2S;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import net.hotbar.satchels.content.satchel.SatchelInventory;
@@ -55,22 +51,19 @@ public abstract class InventoryMixin {
     @Final
     public NonNullList<ItemStack> items;
 
-    @ModifyReturnValue(method = "getSelected", at = @At("RETURN"))
+    // 26.1: renamed from getSelected() to getSelectedItem() (confirmed via javap on the real
+    // merged jar). Also: Inventory#getDestroySpeed(BlockState) no longer exists at all — that
+    // logic moved to Player#getDestroySpeed(BlockState), and its bytecode calls
+    // this.inventory.getSelectedItem() directly. So once this override is retargeted, the
+    // satchel's selected item is picked up automatically by Player's destroy-speed calc — the
+    // old separate satchels$getDestroySpeed mixin (targeting a method that no longer exists) is
+    // gone; it's not needed anymore, not just moved.
+    @ModifyReturnValue(method = "getSelectedItem", at = @At("RETURN"))
     public ItemStack satchels$getSelected(ItemStack original) {
         SatchelData satchelData = SatchelData.get(player);
         if (satchelData.isActive() && satchelData.isSlotInSatchel(selected)) {
             int satchelIndex = satchelData.convertToSatchelIndex(selected);
             return satchelData.getSatchelInventory().getItem(satchelIndex);
-        }
-        return original;
-    }
-
-    @ModifyReturnValue(method = "getDestroySpeed", at = @At("RETURN"))
-    public float satchels$getDestroySpeed(float original, BlockState state) {
-        SatchelData satchelData = SatchelData.get(player);
-        if (satchelData.isSlotInSatchel(selected) && satchelData.isActive()) {
-            int satchelIndex = satchelData.convertToSatchelIndex(selected);
-            return satchelData.getSatchelInventory().getItem(satchelIndex).getDestroySpeed(state);
         }
         return original;
     }
@@ -98,14 +91,27 @@ public abstract class InventoryMixin {
         }
     }
 
-    @WrapOperation(method = "clearOrCountMatchingItems", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/ContainerHelper;clearOrCountMatchingItems(Lnet/minecraft/world/Container;Ljava/util/function/Predicate;IZ)I", ordinal = 1))
-    public int satchels$clearOrCountMatchingItems(Container container, Predicate<ItemStack> predicate, int i, boolean bl, Operation<Integer> original, @Local(ordinal = 1) int cleared) {
-        int extraCleared = original.call(container, predicate, i - cleared, bl);
+    // 26.1: clearOrCountMatchingItems's signature and internals changed completely (confirmed
+    // via javap -c) — it's now (Predicate, int, Container), and internally does exactly 3 calls:
+    // ContainerHelper.clearOrCountMatchingItems(this, ...), then (container param, ...), then
+    // the ItemStack overload on the menu's carried/cursor stack. The old @WrapOperation targeted
+    // the *second* occurrence of the Container-overload call by ordinal, which in 1.21.1 was
+    // some "extra compartment" pass; in the new bytecode ordinal=1 lands on the caller-supplied
+    // Container param instead (e.g. the crafting grid, for the /clear command's craft-slots
+    // arg) — not satchel-relevant at all, so wrapping that specific call is the wrong target now.
+    // Switched to injecting at RETURN and adding the satchel's extra clearing on top of whatever
+    // the vanilla method already cleared — same net effect, but doesn't depend on the internal
+    // call structure staying stable.
+    @Inject(method = "clearOrCountMatchingItems", at = @At("RETURN"), cancellable = true)
+    public void satchels$clearOrCountMatchingItems(Predicate<ItemStack> predicate, int i, Container container, CallbackInfoReturnable<Integer> cir) {
+        int cleared = cir.getReturnValue();
+        boolean bl = i == 0;
         SatchelData satchelData = SatchelData.get(player);
-        extraCleared += ContainerHelper.clearOrCountMatchingItems(satchelData.getSatchelInventory(), predicate, i - extraCleared - cleared, bl);
+
+        int extraCleared = ContainerHelper.clearOrCountMatchingItems(satchelData.getSatchelInventory(), predicate, i - cleared, bl);
 
         ItemStack satchelSlot = satchelData.getSatchelSlotStack();
-        extraCleared += ContainerHelper.clearOrCountMatchingItems(satchelSlot, predicate, i - extraCleared - cleared, bl);
+        extraCleared += ContainerHelper.clearOrCountMatchingItems(satchelSlot, predicate, i - cleared - extraCleared, bl);
 
         satchelData.setSatchelSlotStack(satchelSlot);
         if (satchelSlot.isEmpty()) {
@@ -116,7 +122,7 @@ public abstract class InventoryMixin {
             }
         }
 
-        return extraCleared;
+        cir.setReturnValue(cleared + extraCleared);
     }
 
     @Inject(method = "removeItem(Lnet/minecraft/world/item/ItemStack;)V", at = @At(value = "TAIL"))
@@ -148,8 +154,16 @@ public abstract class InventoryMixin {
         ci.cancel();
     }
 
-    @Inject(method = "setPickedItem", at = @At(value = "FIELD", target = "Lnet/minecraft/world/entity/player/Inventory;selected:I", opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER))
-    public void satchels$deselectSatchelIfNeeded(CallbackInfo ci) {
+    // 26.1: setPickedItem(ItemStack) is gone entirely (searched the whole jar's bytecode for the
+    // string — no trace). Its old role is covered by addAndPickItem(ItemStack), but that method
+    // no longer writes the `selected` field directly — it calls setSelectedSlot(int) instead
+    // (confirmed via javap -c: addAndPickItem invokes setSelectedSlot rather than PUTFIELD).
+    // Confirmed via a full-class bytecode scan that setSelectedSlot(int) is now the *only* place
+    // `selected` gets written anywhere in Inventory, so it's the correct universal target —
+    // covers addAndPickItem and every other path that changes the selected slot, not just the
+    // old setPickedItem call site.
+    @Inject(method = "setSelectedSlot", at = @At(value = "FIELD", target = "Lnet/minecraft/world/entity/player/Inventory;selected:I", opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER))
+    public void satchels$deselectSatchelIfNeeded(int slot, CallbackInfo ci) {
         SatchelData data = SatchelData.get(player);
         if (!data.isSlotInSatchel(selected)) return;
 

@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.*;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Tuple;
@@ -66,19 +67,48 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     @Shadow
     public abstract T getMenu();
 
+    // 26.1: renamed from findSlot(double,double) to getHoveredSlot(double,double) — confirmed via
+    // javap on the real merged jar (identical descriptor (DD)Lnet/minecraft/world/inventory/Slot;
+    // and identical body: iterate menu.slots, check isActive() then isHovering(), return first
+    // match). Also narrowed from protected abstract to private on the real class; @Shadow doesn't
+    // need to match that exactly to locate the method.
     @Shadow
-    protected abstract Slot findSlot(double pMouseX, double pMouseY);
+    protected abstract Slot getHoveredSlot(double pMouseX, double pMouseY);
 
     /**
      * Prevents throwing an item when clicking on a visible {@code SatchelEquipmentSlot}:
      * that slot is outside the pixel bounds {@code ScreenWithSatchel.hasClickedOutside}
      * treats as "inside the window" (it only widens that zone for the satchel inventory row).
      */
-    @ModifyExpressionValue(method = {"mouseClicked", "mouseReleased"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;hasClickedOutside(DDIII)Z"))
-    public boolean satchels$hasClickedOutside(boolean original, double x, double y, int click) {
+    // 26.1: hasClickedOutside dropped its imageWidth/imageHeight params — it now reads
+    // this.imageWidth/this.imageHeight directly (confirmed via javap -c: the descriptor is
+    // (DDII)Z, and mouseClicked/mouseReleased now call it with just (mouseX, mouseY, leftPos,
+    // topPos)). Descriptor-only fix, method's own semantics unchanged.
+    //
+    // 26.1: mouseClicked/mouseReleased no longer take raw (double,double,int) mouse params —
+    // they take a MouseButtonEvent record (with x()/y()/button() accessors) instead. Confirmed
+    // via javap that the two target methods now have genuinely different arities:
+    // mouseClicked(MouseButtonEvent, boolean) vs mouseReleased(MouseButtonEvent) — no second
+    // boolean. A single @ModifyExpressionValue handler can't cover both anymore (Mixin infers
+    // the expected handler signature from each target's own captured locals), so this is split
+    // into one handler per target, both delegating to the same private helper.
+    @ModifyExpressionValue(method = "mouseClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;hasClickedOutside(DDII)Z"))
+    public boolean satchels$hasClickedOutsideOnClick(boolean original, MouseButtonEvent event, boolean bl) {
+        return satchels$hasClickedOutside(original, event);
+    }
+
+    @ModifyExpressionValue(method = "mouseReleased", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;hasClickedOutside(DDII)Z"))
+    public boolean satchels$hasClickedOutsideOnRelease(boolean original, MouseButtonEvent event) {
+        return satchels$hasClickedOutside(original, event);
+    }
+
+    private boolean satchels$hasClickedOutside(boolean original, MouseButtonEvent event) {
         if (!original) return false;
 
-        Slot hovered = findSlot(x, y);
+        double x = event.x();
+        double y = event.y();
+
+        Slot hovered = getHoveredSlot(x, y);
         if (hovered instanceof SatchelEquipmentSlot satchelSlot && satchelSlot.isShown(Minecraft.getInstance().player, this.getMenu())) {
             return false;
         }
@@ -96,10 +126,21 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * with it. For {@code InventoryMenu} also renders the equipment-slot indicator and slides
      * the {@code SatchelEquipmentSlot} icon with the sprite.
      * <p>
-     * Injected at the {@code renderBg} call inside {@code renderBackground} so it fires after
-     * the vanilla background is already drawn but before item icons.
+     * 26.1: {@code renderBackground}/{@code renderBg}/{@code render} don't exist anymore — the
+     * whole render pipeline was split into an "extract render state" pass (confirmed by tracing
+     * the real bytecode end to end). The new top-level order per frame is
+     * {@code Screen#extractRenderStateWithTooltipAndSubtitles} → {@code extractBackground(...)}
+     * (overridden per screen subclass — e.g. {@code ContainerScreen}/{@code CraftingScreen} blit
+     * their own GUI panel texture there, confirmed via javap -c on both) → then
+     * {@code extractRenderState(...)} → (for container screens) {@code extractContents(...)},
+     * which is declared once in {@code AbstractContainerScreen} and NOT overridden per screen —
+     * confirmed by checking every subclass in the hierarchy. So injecting at {@code HEAD} of
+     * {@code extractContents} fires after the panel background is already drawn (since
+     * {@code extractBackground} always runs first) and before slots/labels are drawn — the exact
+     * same timing this mixin had before, just via a different hook, and still generic across
+     * every {@code allowed_menus} screen.
      */
-    @Inject(method = "renderBackground", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;renderBg(Lnet/minecraft/client/gui/GuiGraphics;FII)V"))
+    @Inject(method = "extractContents", at = @At("HEAD"))
     public void satchels$renderSatchelInventory(GuiGraphicsExtractor guiGraphics, int p_283661_, int p_281248_, float p_281886_, CallbackInfo ci) {
         Identifier location = SatchelMenuLocation.resolve(menu);
 
@@ -125,14 +166,18 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         }
     }
 
-    @WrapOperation(method = "findSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isActive()Z"))
+    @WrapOperation(method = "getHoveredSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isActive()Z"))
     public boolean satchels$changeIsActive(Slot slot, Operation<Boolean> original) {
         if (slot instanceof SatchelEquipmentSlot satchelSlot) return satchelSlot.isShown(Minecraft.getInstance().player, this.getMenu());
         if (slot instanceof SatchelInventorySlot && satchels$isSatchelFullyRetractedHere()) return false;
         return original.call(slot);
     }
 
-    @WrapOperation(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isActive()Z"))
+    // 26.1: no more `render` method on this class. The icon-rendering isActive() gate this used
+    // to wrap now lives in `extractSlots` (confirmed via javap -c: extractSlots iterates
+    // menu.slots and gates each extractSlot(...) call behind the exact same Slot.isActive()
+    // check that `render` used to gate renderSlot(...) with).
+    @WrapOperation(method = "extractSlots", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isActive()Z"))
     public boolean satchels$changeIsActiveInRender(Slot slot, Operation<Boolean> original) {
         if (slot instanceof SatchelEquipmentSlot satchelSlot) return satchelSlot.isShown(Minecraft.getInstance().player, this.getMenu());
         if (slot instanceof SatchelInventorySlot && satchels$isSatchelFullyRetractedHere()) return false;
@@ -188,7 +233,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * {@link #satchels$swapWithSatchelSlot}) to a hidden {@code SatchelInventorySlot}.
      * <p>
      * The hotbar-key swap path calls {@code slotClicked} directly with {@code ContainerInput.SWAP},
-     * bypassing {@code findSlot} entirely — the target satchel slot is encoded in
+     * bypassing {@code getHoveredSlot} entirely — the target satchel slot is encoded in
      * {@code pMouseButton}, so it's resolved separately here.
      * <p>
      * Client-only, unsynced — consistent with the hide toggle never touching
@@ -261,7 +306,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * which always exist up to {@code SatchelTier#MAX_SLOT_COUNT}) — nothing gets drawn for
      * an inactive slot, so applying the scissor pair would be wasted GPU state churn.
      * <p>
-     * The RETURN inject (not TAIL) ensures every exit path through {@code renderSlot} gets a
+     * The RETURN inject (not TAIL) ensures every exit path through {@code extractSlot} gets a
      * matching disable — vanilla has an early guard near the top in addition to the natural
      * return, so TAIL would leave the scissor enabled when that guard fires.
      */
@@ -270,8 +315,14 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         return (slot instanceof SatchelInventorySlot || slot instanceof SatchelEquipmentSlot) && slot.isActive();
     }
 
-    @Inject(method = "renderSlot", at = @At("HEAD"))
-    public void satchels$clipSatchelSlotStart(GuiGraphicsExtractor guiGraphics, Slot slot, CallbackInfo ci) {
+    // 26.1: renderSlot(GuiGraphics, Slot) was renamed and gained two params — it's now
+    // extractSlot(GuiGraphicsExtractor, Slot, int mouseX, int mouseY) (confirmed via javap -c;
+    // the two extra ints are just threaded through from extractSlots, unused by this mixin).
+    // Still has an early `return` guard partway through in addition to the natural end
+    // (confirmed via javap -c), so @At("RETURN") (which injects at every return point) is still
+    // the right choice over TAIL — same reasoning as before, just re-verified against the new body.
+    @Inject(method = "extractSlot", at = @At("HEAD"))
+    public void satchels$clipSatchelSlotStart(GuiGraphicsExtractor guiGraphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
         if (!satchels$needsScissor(slot)) return;
         Identifier location = SatchelMenuLocation.resolve(menu);
         if (location == null || !SatchelsCommonConfig.isAllowed(location)) return;
@@ -288,8 +339,8 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         }
     }
 
-    @Inject(method = "renderSlot", at = @At("RETURN"))
-    public void satchels$clipSatchelSlotEnd(GuiGraphicsExtractor guiGraphics, Slot slot, CallbackInfo ci) {
+    @Inject(method = "extractSlot", at = @At("RETURN"))
+    public void satchels$clipSatchelSlotEnd(GuiGraphicsExtractor guiGraphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
         if (!satchels$needsScissor(slot)) return;
         Identifier location = SatchelMenuLocation.resolve(menu);
         if (location == null || !SatchelsCommonConfig.isAllowed(location)) return;

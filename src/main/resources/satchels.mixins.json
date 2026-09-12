@@ -7,12 +7,14 @@
   "mixins": [
     "GiveCommandMixin",
     "ItemEntityMixin",
+    "ServerGamePacketListenerImplMixin",
     "ServerPlaceRecipeMixin",
     "ServerPlayerMixin",
     "menu.AbstractContainerMenuMixin",
     "menu.HorseInventoryMenuMixin",
     "menu.InventoryMenuMixin",
     "player.InventoryMixin",
+    "player.LivingEntityMixin",
     "player.PlayerMixin"
   ],
   "injectors": {

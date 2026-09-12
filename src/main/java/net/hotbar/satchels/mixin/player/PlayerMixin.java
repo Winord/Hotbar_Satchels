@@ -3,7 +3,6 @@ package net.hotbar.satchels.mixin.player;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -15,7 +14,6 @@ import net.minecraft.world.level.Level;
 import net.hotbar.satchels.compat.SatchelsCompat;
 import net.hotbar.satchels.content.satchel.IHaveSatchelData;
 import net.hotbar.satchels.content.satchel.SatchelData;
-import net.hotbar.satchels.content.satchel.SatchelInventory;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -52,37 +50,49 @@ public abstract class PlayerMixin extends LivingEntity implements IHaveSatchelDa
         return satchels$satchelData;
     }
 
+    // 26.1: Entity#addAdditionalSaveData/readAdditionalSaveData no longer take a raw CompoundTag —
+    // the actual descriptor the mixin engine reported at runtime is
+    // (Lnet/minecraft/world/level/storage/ValueOutput;...)V / (...ValueInput;...)V. That part is
+    // a hard fact straight from the loaded class, not a guess.
+    //
+    // What IS a hypothesis (not decompiled in this session — flagging per the port protocol):
+    // ValueOutput#store(String, Codec<T>, T) / ValueInput#read(String, Codec<T>) returning
+    // Optional<T>. This mirrors the real vanilla "ValueInput/ValueOutput" NBT-agnostic save
+    // refactor and lets us keep bridging through CompoundTag (CompoundTag.CODEC is already used
+    // elsewhere in SatchelData, e.g. its own equipped-stack serialization) rather than rewriting
+    // SatchelData's whole (de)serializeNBT contract around these interfaces directly. If this
+    // doesn't compile, the compiler error will show ValueOutput/ValueInput's *actual* member
+    // names — send that back rather than let me guess again.
     @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
-    public void satchels$addAdditionalData(CompoundTag compoundTag, CallbackInfo ci) {
+    public void satchels$addAdditionalData(net.minecraft.world.level.storage.ValueOutput output, CallbackInfo ci) {
         CompoundTag tag = satchels$satchelData.serializeNBT(this.registryAccess());
-        compoundTag.put(SatchelData.KEY_SATCHEL, tag);
+        output.store(SatchelData.KEY_SATCHEL, CompoundTag.CODEC, tag);
     }
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
-    public void satchels$readAdditionalData(CompoundTag compoundTag, CallbackInfo ci) {
-        satchels$satchelData.deserializeNBT(this.registryAccess(), compoundTag.getCompound(SatchelData.KEY_SATCHEL).orElseGet(CompoundTag::new));
+    public void satchels$readAdditionalData(net.minecraft.world.level.storage.ValueInput input, CallbackInfo ci) {
+        CompoundTag tag = input.read(SatchelData.KEY_SATCHEL, CompoundTag.CODEC).orElseGet(CompoundTag::new);
+        satchels$satchelData.deserializeNBT(this.registryAccess(), tag);
     }
 
-    // Satchel Inventory Hooks
-    @Inject(method = "setItemSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/core/NonNullList;set(ILjava/lang/Object;)Ljava/lang/Object;", ordinal = 0), cancellable = true)
-    public void satchels$setSatchelSlotIfNeeded(EquipmentSlot equipmentSlot, ItemStack itemStack, CallbackInfo ci) {
-        if (satchels$satchelData.isActive()) {
-            if (!satchels$satchelData.isSlotInSatchel(this.inventory.selected)) return;
-            int satchelIndex = satchels$satchelData.convertToSatchelIndex(this.inventory.selected);
+    // Satchel Inventory Hooks — see LivingEntityMixin#satchels$setSatchelSlotIfNeeded: setItemSlot
+    // moved to LivingEntity in 26.1 (Player no longer overrides it), and its whole body changed
+    // shape, so the injection moved there too. Kept the doc note here since this is the first
+    // place someone reading PlayerMixin would look for it.
 
-            SatchelInventory satchelInventory = satchels$satchelData.getSatchelInventory();
-            this.onEquipItem(equipmentSlot, satchelInventory.getItems().set(satchelIndex, itemStack), itemStack);
-            ci.cancel();
-        }
-    }
-
+    // 26.1: dropEquipment gained a ServerLevel parameter (confirmed via javap — it's now
+    // dropEquipment(ServerLevel), not a bare no-arg method). @Inject requires the handler's own
+    // parameters (before CallbackInfo) to match the target's exactly, so the old zero-arg handler
+    // is a signature mismatch that would fail to apply at class-load time — same failure mode as
+    // the two originally-reported crashes, just not reached yet. Fixed by adding the ServerLevel
+    // param and using it directly instead of the old this.level() instanceof pattern match.
     @Inject(method = "dropEquipment", at = @At("TAIL"))
-    public void satchels$dropSatchelEquipment(CallbackInfo ci) {
+    public void satchels$dropSatchelEquipment(net.minecraft.server.level.ServerLevel serverLevel, CallbackInfo ci) {
         SatchelData satchelData = SatchelData.get((Player) (Object) this);
-        if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
+        if (
                 // 26.1: GameRules.getBoolean(GameRule<Boolean>) removed; confirmed via javap the
                 // instance now exposes a generic <T> T get(GameRule<T>) instead.
-                && !serverLevel.getGameRules().get(GameRules.KEEP_INVENTORY)) {
+                !serverLevel.getGameRules().get(GameRules.KEEP_INVENTORY)) {
             // Always drop the satchel's stored contents ourselves — nothing else knows
             // about them, regardless of which compat currently manages the equipped slot.
             satchelData.getSatchelInventory().dropAll(true);

@@ -2,7 +2,6 @@ package net.hotbar.satchels.mixin;
 
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.hotbar.satchels.SatchelsEventHooks;
 import net.hotbar.satchels.content.satchel.SatchelData;
@@ -29,6 +28,15 @@ import java.util.OptionalInt;
  * <p>
  * 26.1 port note: {@code DimensionTransition} moved from {@code net.minecraft.server.level}
  * to {@code net.minecraft.world.level.portal} in 26.1.
+ * <p>
+ * 26.1 port note: {@code ServerPlayer#changeDimension(TeleportTransition)} is gone —
+ * confirmed via {@code javap} on the real merged jar. {@code Entity} declares
+ * {@code teleport(TeleportTransition): Entity}, and {@code ServerPlayer} now overrides it with
+ * a covariant return, {@code teleport(TeleportTransition): ServerPlayer} — the
+ * Entity-returning descriptor only exists as a synthetic {@code ACC_BRIDGE} method that just
+ * delegates to the real one, same situation as the {@code ShapedRecipe#getSerializer()}
+ * covariant-return case documented in the fix log. Injecting into {@code teleport} (not the
+ * bridge) with {@code CallbackInfoReturnable<ServerPlayer>} targets the real method body.
  */
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixin {
@@ -39,8 +47,8 @@ public abstract class ServerPlayerMixin {
         SatchelsEventHooks.onMenuOpen(self, self.containerMenu);
     }
 
-    @Inject(method = "changeDimension", at = @At("RETURN"))
-    private void satchels$onChangeDimension(TeleportTransition transition, CallbackInfoReturnable<Entity> cir) {
+    @Inject(method = "teleport", at = @At("RETURN"))
+    private void satchels$onChangeDimension(TeleportTransition transition, CallbackInfoReturnable<ServerPlayer> cir) {
         if (cir.getReturnValue() == null) return;
         ServerPlayer self = (ServerPlayer) (Object) this;
         SatchelData.get(self).resyncToClient();
