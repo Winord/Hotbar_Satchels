@@ -1,6 +1,6 @@
 // 26.1.2	-999999999-01-01T00:00:00	Hotbar Satchels/Satchel Advancements
-be84950c0e1555fa8c86d01443eaa55efc5a3738 data/satchels/advancement/root.json
-f6f0f79438381a204c5f43006bb9d5c54ec252c5 data/satchels/advancement/satchel_diamond.json
+8c43342c8722bf954865e73769d6ba9db1b0dd7b data/satchels/advancement/root.json
+8e4e684a9eebc30bd5b3071618a4735b55405b65 data/satchels/advancement/satchel_diamond.json
 31de4441ab3370d6ac5acd3431e9517e7cd550dc data/satchels/advancement/satchel_full.json
 91a557f63b693da7ed0942bbe3c6d1ebb32c7083 data/satchels/advancement/satchel_golden.json
 b46ed95a4f4e604cf3dedf59b77e3151c3474f77 data/satchels/advancement/satchel_netherite.json

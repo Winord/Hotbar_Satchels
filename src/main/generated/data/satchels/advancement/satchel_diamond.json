@@ -17,7 +17,7 @@
     "description": {
       "translate": "satchels.advancements.diamond.description"
     },
-    "frame": "goal",
+    "frame": "task",
     "hidden": false,
     "icon": {
       "id": "satchels:satchel_diamond"

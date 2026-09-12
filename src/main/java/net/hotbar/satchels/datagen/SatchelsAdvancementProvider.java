@@ -18,7 +18,7 @@ import java.util.concurrent.CompletableFuture;
  * <pre>
  *   root (tab, silent)
  *   └── satchel_golden  (task)    – parent: root
- *       └── satchel_diamond (goal)  – parent: golden
+ *       └── satchel_diamond (task)  – parent: golden
  *           └── satchel_netherite (challenge) – parent: diamond
  *               └── satchel_full (goal) – parent: netherite
  * </pre>
@@ -65,7 +65,7 @@ public class SatchelsAdvancementProvider implements DataProvider {
                 buildTierAdvancement(
                         "satchels:satchel_golden",   // ← parent is golden, not root
                         "satchels:satchel_diamond",
-                        "goal",
+                        "task",   // regular advancement, not a goal — matches golden/netherite's style
                         "satchels.advancements.diamond.title",
                         "satchels.advancements.diamond.description",
                         "satchels:satchel_diamond"
@@ -105,7 +105,13 @@ public class SatchelsAdvancementProvider implements DataProvider {
         description.addProperty("translate", "satchels.advancements.root.description");
         display.add("description", description);
 
-        display.addProperty("background", "minecraft:textures/gui/advancements/backgrounds/adventure.png");
+        // 26.1: the "background" field is now a sprite id resolved against the gui atlas, not
+        // a raw texture path — "minecraft:textures/gui/advancements/backgrounds/adventure.png"
+        // (the 1.21.1 form) silently fails to resolve and the tab renders with no background.
+        // Confirmed against the real merged jar: every vanilla tab root (adventure/husbandry/
+        // end/nether/story) now uses the short form "minecraft:gui/advancements/backgrounds/
+        // <name>" — no "textures/" prefix, no ".png" extension.
+        display.addProperty("background", "minecraft:gui/advancements/backgrounds/adventure");
         display.addProperty("frame", "task");
         display.addProperty("show_toast", false);
         display.addProperty("announce_to_chat", false);
