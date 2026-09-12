@@ -2,15 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "category": "equipment",
   "key": {
-    "g": {
-      "tag": "c:ingots/gold"
-    },
-    "l": {
-      "tag": "c:leathers"
-    },
-    "s": {
-      "tag": "c:strings"
-    }
+    "g": "#c:ingots/gold",
+    "l": "#c:leathers",
+    "s": "#c:strings"
   },
   "pattern": [
     " s ",
@@ -18,7 +12,6 @@
     "sls"
   ],
   "result": {
-    "count": 1,
     "id": "satchels:satchel_golden"
   }
 }
