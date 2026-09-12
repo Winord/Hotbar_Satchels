@@ -1,7 +1,6 @@
 package net.hotbar.satchels.mixin.player;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import net.hotbar.satchels.client.SatchelClientBridge;
 import net.minecraft.core.NonNullList;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
@@ -11,7 +10,6 @@ import net.minecraft.world.item.ItemStack;
 import net.hotbar.satchels.network.packets.ToggleSatchelPacketC2S;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import net.hotbar.satchels.content.satchel.SatchelInventory;
-import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -28,12 +26,20 @@ import java.util.function.Predicate;
  * satchel's contents when it's active, so the satchel's 6 slots behave like an extension of
  * the hotbar.
  * <p>
- * The client-side toggle-off in {@code satchels$deselectSatchelIfNeeded} goes through
- * {@code SatchelClientBridge} rather than calling networking APIs directly: {@code Inventory}
- * is a shared class used on both sides, and Fabric Loader strips client-only networking
- * classes from the server classpath — routing through a small always-present bridge class
- * avoids a {@code ClassNotFoundException} when this mixin's bytecode is resolved on a
- * dedicated server.
+ * Regression note (post-launch bugfix): the client-side "deselect on pick" hook that used to live
+ * here was removed. In 1.21.1 it was narrowly scoped to {@code setPickedItem} (F-key/middle-click
+ * pick, the only thing that wrote {@code selected} outside normal navigation). In 26.1,
+ * {@code setSelectedSlot(int)} became the *universal* write point for every selection path —
+ * scroll wheel, number keys, server sync, pick-item alike (confirmed via a full-jar bytecode
+ * scan: {@code Minecraft}, {@code MouseHandler}, {@code ClientPacketListener},
+ * {@code ServerGamePacketListenerImpl} and {@code Inventory} itself all call it directly). A
+ * generic hook on that method fired the "deactivate satchel" logic on *any* selection change,
+ * including a player simply scrolling onto one of the satchel's own hotbar slots — which
+ * incorrectly closed the satchel instead of just selecting that slot. Since pick-item is now
+ * fully server-authoritative (see {@code ServerGamePacketListenerImplMixin}, which already has
+ * the correctly-scoped server-side twin of this check), the client no longer needs — or can
+ * correctly perform — this detection on its own; it now just waits for the server's
+ * {@code SatchelStatusPacketS2C} like any other state sync.
  */
 @Mixin(Inventory.class)
 public abstract class InventoryMixin {
@@ -152,23 +158,5 @@ public abstract class InventoryMixin {
         satchelInventory.setItem(satchelSelected, items.get(slot));
         items.set(slot, held);
         ci.cancel();
-    }
-
-    // 26.1: setPickedItem(ItemStack) is gone entirely (searched the whole jar's bytecode for the
-    // string — no trace). Its old role is covered by addAndPickItem(ItemStack), but that method
-    // no longer writes the `selected` field directly — it calls setSelectedSlot(int) instead
-    // (confirmed via javap -c: addAndPickItem invokes setSelectedSlot rather than PUTFIELD).
-    // Confirmed via a full-class bytecode scan that setSelectedSlot(int) is now the *only* place
-    // `selected` gets written anywhere in Inventory, so it's the correct universal target —
-    // covers addAndPickItem and every other path that changes the selected slot, not just the
-    // old setPickedItem call site.
-    @Inject(method = "setSelectedSlot", at = @At(value = "FIELD", target = "Lnet/minecraft/world/entity/player/Inventory;selected:I", opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER))
-    public void satchels$deselectSatchelIfNeeded(int slot, CallbackInfo ci) {
-        SatchelData data = SatchelData.get(player);
-        if (!data.isSlotInSatchel(selected)) return;
-
-        if (!data.isActive()) return;
-        data.setActive(false, true);
-        if (player.level().isClientSide()) SatchelClientBridge.sendToggleOff();
     }
 }

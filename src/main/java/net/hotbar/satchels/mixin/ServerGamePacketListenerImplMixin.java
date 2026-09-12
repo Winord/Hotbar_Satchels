@@ -105,6 +105,9 @@ public abstract class ServerGamePacketListenerImplMixin {
         if (!data.isSlotInSatchel(selected)) return;
         if (!data.isActive()) return;
 
+        // Delegates to ToggleSatchelPacketC2S.handle rather than calling setActive/sendData
+        // directly — that handler now always confirms the active flag back to the client (see
+        // its own bugfix note), which is exactly what's needed here too.
         ToggleSatchelPacketC2S.handle(new ToggleSatchelPacketC2S(false), this.player);
     }
 }

@@ -1,8 +1,9 @@
 {
   "type": "minecraft:smithing_transform",
-  "addition": "#minecraft:netherite_tool_materials",
+  "addition": "minecraft:netherite_ingot",
   "base": "satchels:satchel_diamond",
   "result": {
+    "count": 1,
     "id": "satchels:satchel_netherite"
   },
   "template": "minecraft:netherite_upgrade_smithing_template"

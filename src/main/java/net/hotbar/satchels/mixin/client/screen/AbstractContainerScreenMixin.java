@@ -147,8 +147,23 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         if (location == null) return;
         if (!SatchelsCommonConfig.isAllowed(location)) return;
 
+        // 26.1: unlike satchels$clipSatchelSlotStart (which clips extractSlot's item icons and
+        // runs *inside* extractContents' own pushMatrix/translate), this HEAD injection runs
+        // *before* that translate — so leftPos/topPos still need to be added manually here, the
+        // pose is genuinely untransformed at this point. These two background-sprite draws had
+        // no scissor clip at all before: in 1.21.1 they relied on draw order/z-layering alone to
+        // end up hidden behind the main panel, but 26.1's deferred "extract now, batch-render
+        // later" pipeline (confirmed via decompile — every draw call just queues a render-state
+        // object, it doesn't paint immediately) doesn't guarantee that submission order alone
+        // keeps them visually under the panel. Clipping them the same way the item icons are
+        // clipped removes that reliance on draw order entirely.
+        int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+        int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
+
         if (menu instanceof InventoryMenu) {
+            guiGraphics.enableScissor(this.leftPos + this.imageWidth, 0, screenWidth, screenHeight);
             satchels$screenWithSatchel.renderSatchelSlot(guiGraphics, this.leftPos, this.topPos, this.imageWidth, this.imageHeight);
+            guiGraphics.disableScissor();
 
             int slotXOffset = (int) satchels$screenWithSatchel.getSlotXOffset();
             for (Slot slot : this.menu.slots) {
@@ -158,7 +173,9 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
         Tuple<Integer, Integer> offset = SatchelsCommonConfig.getOverlayOffset(location);
         boolean forceHidden = SatchelsClientConfig.isSatchelHiddenInInventory();
+        guiGraphics.enableScissor(0, this.topPos + this.imageHeight, screenWidth, screenHeight);
         satchels$screenWithSatchel.renderSatchelInventory(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight, forceHidden);
+        guiGraphics.disableScissor();
 
         int rowOffset = (int) satchels$screenWithSatchel.getInventoryYOffset();
         for (Slot slot : this.menu.slots) {
@@ -330,11 +347,20 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
         int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
 
+        // 26.1: enableScissor(x0,y0,x1,y1) now runs the rect through
+        // ScreenRectangle#transformAxisAligned(this.pose) before pushing it (confirmed via
+        // decompile) — i.e. it's transformed by whatever pose translation is currently active,
+        // not raw absolute screen pixels like before. extractSlot runs *inside*
+        // extractContents' own pushMatrix()/translate(leftPos, topPos) block (confirmed via
+        // decompile), so that translation is already applied here — adding leftPos/topPos
+        // again double-translates the rect, landing the clip region nowhere near the actual
+        // panel edge. That's what broke both the equipment-slot icon (clipped away entirely)
+        // and the retract animation (nothing left to clip it against the real panel edge).
         if (slot instanceof SatchelEquipmentSlot) {
-            int scissorRightEdge = this.leftPos + this.imageWidth;
+            int scissorRightEdge = this.imageWidth;
             guiGraphics.enableScissor(scissorRightEdge, 0, screenWidth, screenHeight);
         } else {
-            int scissorBottomEdge = this.topPos + this.imageHeight;
+            int scissorBottomEdge = this.imageHeight;
             guiGraphics.enableScissor(0, scissorBottomEdge, screenWidth, screenHeight);
         }
     }

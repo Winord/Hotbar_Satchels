@@ -1,6 +1,12 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "satchels:item/satchel_worn_diamond"
+    "model": "satchels:item/satchel_worn_diamond",
+    "tints": [
+      {
+        "type": "minecraft:dye",
+        "default": -5284562
+      }
+    ]
   }
 }

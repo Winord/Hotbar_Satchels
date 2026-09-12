@@ -101,7 +101,7 @@ public class SatchelLayer<S extends AvatarRenderState, M extends EntityModel<S>>
         // 26.1: ItemStackRenderState.render(...) renamed to submit(...) (confirmed via javap —
         // no render() method exists on this class anymore).
         renderState.submit(poseStack, submitNodeCollector, lightCoords,
-                net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
+                net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, state.outlineColor);
 
         poseStack.popPose();
     }
