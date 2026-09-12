@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_satchel_golden": {
+      "conditions": {
+        "items": [
+          {
+            "items": "satchels:satchel_golden"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "minecraft:satchel_golden_dyed"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_satchel_golden"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "minecraft:satchel_golden_dyed"
+    ]
+  }
+}
