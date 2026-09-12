@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:crafting_dye",
+  "category": "misc",
+  "dye": "#minecraft:dyes",
+  "group": "dyed_satchel",
+  "result": {
+    "id": "satchels:satchel_netherite"
+  },
+  "target": "satchels:satchel_netherite"
+}

@@ -75,6 +75,17 @@ public class SatchelsRecipeProvider extends FabricRecipeProvider {
                         .unlockedBy("has_gold", has(ConventionalItemTags.GOLD_INGOTS))
                         .save(output);
 
+                // Dyeing: "minecraft:crafting_dye" is per-item, not tag-driven — confirmed via
+                // the real vanilla data (leather_helmet_dyed.json, wolf_armor_dyed.json etc. are
+                // each their own recipe file keyed to one specific "target" item, there's no
+                // generic "#minecraft:dyeable" recipe that covers every tagged item for free).
+                // Being in the dyeable tag only affects things like shulker-box-style dye
+                // detection elsewhere; it does NOT give a crafting recipe by itself. dyedItem(...)
+                // is the same vanilla RecipeProvider helper that generates those vanilla files.
+                for (var satchel : ModItems.ALL_SATCHELS) {
+                    this.dyedItem(satchel, "dyed_satchel");
+                }
+
                 satchelUpgradeRecipe(
                         output, Satchels.at("satchel_diamond"), RecipeCategory.TOOLS, ModItems.SATCHEL_DIAMOND,
                         List.of(" d ", "dgd", " d "),

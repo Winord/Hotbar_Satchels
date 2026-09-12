@@ -2,9 +2,12 @@ package net.hotbar.satchels.datagen;
 
 import net.fabricmc.fabric.api.datagen.v1.FabricPackOutput;
 import net.fabricmc.fabric.api.client.datagen.v1.provider.FabricModelProvider;
+import net.minecraft.client.color.item.Dye;
 import net.minecraft.client.data.models.BlockModelGenerators;
 import net.minecraft.client.data.models.ItemModelGenerators;
+import net.minecraft.client.data.models.model.ItemModelUtils;
 import net.minecraft.client.data.models.model.ModelLocationUtils;
+import net.minecraft.resources.Identifier;
 import net.hotbar.satchels.ModItems;
 import net.hotbar.satchels.Satchels;
 import net.hotbar.satchels.content.satchel.SatchelItem;
@@ -30,6 +33,22 @@ import org.jetbrains.annotations.NotNull;
  * <p>
  * Note (26.1 port): datagen model classes moved from {@code net.minecraft.data.models} to
  * {@code net.minecraft.client.data.models} as part of the 26.1 unobfuscation restructure.
+ * <p>
+ * 26.1 port bug (missing-texture item icon): confirmed via {@code javap -c} that
+ * <b>neither</b> {@code generateLayeredItem} overload touches {@code itemModelOutput} — both
+ * only ever write the raw geometry model ({@code assets/<ns>/models/item/<id>.json}) through
+ * the low-level {@code modelOutput} consumer. In 26.1 that raw model is no longer
+ * auto-associated with the registered {@code Item} as its icon; something has to explicitly
+ * call {@code itemModelOutput.accept(item, unbakedModel)} to write the actual client-item
+ * wrapper ({@code assets/<ns>/items/<id>.json}) that {@code ClientItemInfoLoader} looks up —
+ * exactly the same wrapper shape already hand-authored for the worn models (see
+ * {@code assets/satchels/items/satchel_worn_golden.json}). {@code generateFlatItem}'s own
+ * disassembly is what shows the correct pattern
+ * ({@code itemModelOutput.accept(item, ItemModelUtils.plainModel(modelId))}); it's just not
+ * something {@code generateLayeredItem} does for you, so it has to be added explicitly here.
+ * Without this, the three satchel items had a perfectly correct model+textures on disk that
+ * nothing ever pointed the registered {@code Item} at — hence the pink/black missing-texture
+ * icon in inventory/hotbar despite no crash and no missing-file warning.
  */
 public class SatchelsModelProvider extends FabricModelProvider {
     public SatchelsModelProvider(FabricPackOutput output) {
@@ -47,10 +66,25 @@ public class SatchelsModelProvider extends FabricModelProvider {
             // 26.1: generateLayeredItem's texture params changed from Identifier to Material
             // (net.minecraft.client.resources.model.sprite.Material) — confirmed via javap.
             // Material is just a thin record wrapper around the sprite Identifier.
-            itemModelGenerator.generateLayeredItem(
+            Identifier modelId = itemModelGenerator.generateLayeredItem(
                     ModelLocationUtils.getModelLocation(satchel),
                     new net.minecraft.client.resources.model.sprite.Material(Satchels.at("item/satchel")),
                     new net.minecraft.client.resources.model.sprite.Material(satchel.getTier().getClipTexture())
+            );
+            // The call above only ever writes the raw geometry model. Without this, nothing
+            // ever tells the registered Item to actually use it — see the class javadoc.
+            //
+            // Bug fix: default color was rendering white, not brown. 26.1 removed the old
+            // Java-side ColorProviderRegistry.ITEM entirely — item tinting is now declared on
+            // the model itself via a tint_source (confirmed against the real vanilla
+            // leather_helmet item wrapper: {"type": "minecraft:model", "model": ...,
+            // "tints": [{"type": "minecraft:dye", "default": <argb>}]}). tintedModel's tints
+            // list maps to texture layers by index — passing exactly one Dye tint here applies
+            // it to layer0 only (the shared dyeable body), leaving layer1 (the tier clip)
+            // untinted, matching the two-layer split this model already uses.
+            itemModelGenerator.itemModelOutput.accept(
+                    satchel,
+                    ItemModelUtils.tintedModel(modelId, new Dye(SatchelItem.DEFAULT_COLOR))
             );
         }
     }
