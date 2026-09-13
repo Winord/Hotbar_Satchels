@@ -40,8 +40,8 @@ public class ModSprites {
         INVENTORY_SPRITES.put(SatchelTier.DIAMOND, new Sprite(Satchels.at("satchel_inventory_diamond"), 118, 27));
         INVENTORY_SPRITES.put(SatchelTier.NETHERITE, new Sprite(Satchels.at("satchel_inventory_netherite"), 172, 27));
 
-        HOTBAR_SPRITES.put(SatchelTier.GOLDEN, new Sprite(Satchels.at("satchel_hotbar_golden"), 61, 22));
-        HOTBAR_SPRITES.put(SatchelTier.DIAMOND, new Sprite(Satchels.at("satchel_hotbar_diamond"), 121, 22));
+        HOTBAR_SPRITES.put(SatchelTier.GOLDEN, new Sprite(Satchels.at("satchel_hotbar_golden"), 62, 22));
+        HOTBAR_SPRITES.put(SatchelTier.DIAMOND, new Sprite(Satchels.at("satchel_hotbar_diamond"), 122, 22));
         HOTBAR_SPRITES.put(SatchelTier.NETHERITE, new Sprite(Satchels.at("satchel_hotbar_netherite"), 182, 22));
     }
 
