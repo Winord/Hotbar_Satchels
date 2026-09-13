@@ -11,6 +11,7 @@ import net.minecraft.world.item.component.DyedItemColor;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.NormalCraftingRecipe;
 import net.minecraft.world.item.crafting.PlacementInfo;
 import net.minecraft.world.item.crafting.Recipe;
@@ -23,6 +24,7 @@ import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Same shape/ingredients as a plain shaped recipe (in fact used only for the Golden → Diamond
@@ -104,6 +106,12 @@ public class SatchelUpgradeRecipe extends NormalCraftingRecipe {
 
     public int getHeight() {
         return this.pattern.height();
+    }
+
+    /** Exposed for {@link net.hotbar.satchels.compat.recipeviewer.SatchelUpgradeCraftingCategoryExtension} — {@link #pattern} itself is private. */
+    @NotNull
+    public List<Optional<Ingredient>> getPatternIngredients() {
+        return this.pattern.ingredients();
     }
 
     @Override

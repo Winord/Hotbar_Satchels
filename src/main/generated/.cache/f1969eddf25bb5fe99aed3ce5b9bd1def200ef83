@@ -1,0 +1,7 @@
+// 1.21.1	2026-09-03T15:47:52.5397904	Hotbar Satchels/Recipes
+b7c90a79cfda4aab3bdd833b6780d17ab3fdb6ef data\satchels\advancement\recipes\tools\satchel_golden.json
+54e95522f1bd32aec4211932aac4925db816017e data\satchels\advancement\recipes\tools\satchel_netherite_smithing.json
+6da568bb528c5f7e7c00d0fb797f86edceb8707a data\satchels\advancement\recipes\tools\satchel_diamond.json
+20a37c15380c6e12d07c1edb34b2ef974c2eb446 data\satchels\recipe\satchel_diamond.json
+eb2800780e829334d2dbe837b5227d5298107b30 data\satchels\recipe\satchel_golden.json
+15446b9b0a41eba18a14fb5e6bc384c09de74d3f data\satchels\recipe\satchel_netherite_smithing.json
