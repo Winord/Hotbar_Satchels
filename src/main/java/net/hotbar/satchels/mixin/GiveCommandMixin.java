@@ -10,15 +10,23 @@ import net.minecraft.world.item.ItemStack;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import net.minecraft.advancements.CriteriaTriggers;
+
 @Mixin(GiveCommand.class)
 public class GiveCommandMixin {
     @WrapOperation(method = "giveItem", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Inventory;add(Lnet/minecraft/world/item/ItemStack;)Z"))
     private static boolean satchels$prioritizeSatchel(Inventory inventory, ItemStack stack, Operation<Boolean> original, @Local ServerPlayer player) {
         SatchelData satchelData = SatchelData.get(player);
-        if (satchelData.isActive()) {
-            return satchelData.getSatchelInventory().pickup(stack) || original.call(inventory, stack);
+        ItemStack pickedUpKind = stack.copy();
+
+        boolean result = satchelData.isActive()
+                ? satchelData.getSatchelInventory().pickup(stack) || original.call(inventory, stack)
+                : original.call(inventory, stack) || (satchelData.canAccess() && satchelData.getSatchelInventory().pickup(stack));
+
+        if (result) {
+            CriteriaTriggers.INVENTORY_CHANGED.trigger(player, player.getInventory(), pickedUpKind);
         }
 
-        return original.call(inventory, stack) || (satchelData.canAccess() && satchelData.getSatchelInventory().pickup(stack));
+        return result;
     }
 }
