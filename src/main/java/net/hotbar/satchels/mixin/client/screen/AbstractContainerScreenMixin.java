@@ -173,7 +173,14 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
         Tuple<Integer, Integer> offset = SatchelsCommonConfig.getOverlayOffset(location);
         boolean forceHidden = SatchelsClientConfig.isSatchelHiddenInInventory();
-        guiGraphics.enableScissor(0, this.topPos + this.imageHeight, screenWidth, screenHeight);
+        // BUGFIX: the scissor boundary must move together with the panel's actual bottom edge.
+        // renderSatchelInventory is drawn at (topPos + offset.getB()), but this clip used to be
+        // pinned to the un-offset (topPos + imageHeight) — so any non-zero overlayYOffset (e.g.
+        // the "0 -1" every generic_9xN/shulker_box default ships with) shifted the row's render
+        // position without moving the clip line, silently cropping exactly |offset.getB()| px off
+        // the row every time. Adding offset.getB() here keeps the clip flush with the panel edge
+        // the row is actually drawn against, whatever that offset is.
+        guiGraphics.enableScissor(0, this.topPos + this.imageHeight + offset.getB(), screenWidth, screenHeight);
         satchels$screenWithSatchel.renderSatchelInventory(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight, forceHidden);
         guiGraphics.disableScissor();
 
@@ -360,7 +367,15 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
             int scissorRightEdge = this.imageWidth;
             guiGraphics.enableScissor(scissorRightEdge, 0, screenWidth, screenHeight);
         } else {
-            int scissorBottomEdge = this.imageHeight;
+            // BUGFIX (same root cause as satchels$renderSatchelInventory's clip, see its
+            // comment): item icons are slid to topPos + overlayYOffset by
+            // SatchelInventorySlot#updateY, but this clip boundary was pinned to the raw
+            // this.imageHeight — un-offset — so a nonzero overlayYOffset (e.g. shulker_box's
+            // default "0 -1") clipped exactly that many pixels off the icon row's bottom edge,
+            // independently of (and in addition to) the identical bug in the background-bar
+            // clip above. Both must move together with the same offset.
+            Tuple<Integer, Integer> overlayOffset = SatchelsCommonConfig.getOverlayOffset(location);
+            int scissorBottomEdge = this.imageHeight + overlayOffset.getB();
             guiGraphics.enableScissor(0, scissorBottomEdge, screenWidth, screenHeight);
         }
     }

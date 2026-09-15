@@ -89,9 +89,33 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 
-    // Trinkets Updated — replaces Accessories on 26.x (Accessories has no Fabric build on 26.x).
-    // MIT licence, author Patbox. modId = "trinkets_updated"
-    implementation "eu.pb4:trinkets:${trinkets_version}"
+    // Trinkets Updated — archived for 26.1.x (see docs/accessory-compat-roadmap.md and
+    // SatchelsCompat's class javadoc): a known upstream slot-id/visual-position desync bug in
+    // the 4.0.x+26.1 line, only fixed via the rework that shipped alongside Trinkets' own 26.2
+    // port. TrinketsCompat.java stays in the codebase, dormant (SatchelsCompat.TRINKETS
+    // .shouldLoad is hardcoded false). Softened from a hard `implementation` to
+    // `compileOnly`/`localRuntime` — the satchel no longer requires players to install
+    // Trinkets Updated at all, since its integration doesn't activate. localRuntime keeps it
+    // available for `./gradlew runClient`/`runServer` dev testing without bundling it into the
+    // built jar. MIT licence, author Patbox. modId = "trinkets_updated"
+    // NOTE: plain `compileOnly`/`localRuntime`, not `modCompileOnly`/`modLocalRuntime` — 26.1
+    // ships an unobfuscated jar, so Loom dropped remapping (and the `mod`-prefixed configs
+    // that trigger it) entirely; see https://docs.fabricmc.net/develop/porting/.
+    compileOnly "eu.pb4:trinkets:${trinkets_version}"
+    localRuntime "eu.pb4:trinkets:${trinkets_version}"
+
+    // Ohmega — active satchel-accessory compat for 26.1.x, replacing Trinkets while the above
+    // is archived (see docs/accessory-compat-roadmap.md). OhmegaCompat.java is a real,
+    // verified implementation (checked against this exact jar via javap/CFR decompilation —
+    // see that class's javadoc for what was confirmed and why). MODID = "ohmega".
+    compileOnly "maven.modrinth:ohmega:${ohmega_version}"
+    localRuntime "maven.modrinth:ohmega:${ohmega_version}"
+
+    // Ohmega's own hard dependency — without it Ohmega's ModInitializer throws registering its
+    // config spec, so runClient/runServer would crash even though this isn't our mod's own
+    // dependency. See gradle.properties for why this doesn't need to appear in fabric.mod.json.
+    compileOnly "maven.modrinth:forge-config-api-port:${forgeconfigapiport_version}-fabric"
+    localRuntime "maven.modrinth:forge-config-api-port:${forgeconfigapiport_version}-fabric"
 
     implementation "maven.modrinth:raised:${raised_version}"
 
@@ -127,6 +151,16 @@ java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
+    // Without this, `options.release = 25` above just asserts against whatever JVM happens
+    // to have started the Gradle daemon (JAVA_HOME / PATH `java` at the time `gradlew` was
+    // invoked) — if that JVM is older than 25, javac fails immediately with
+    // "error: release version 25 not supported", even on a machine that has a JDK 25
+    // installed elsewhere. This block makes Gradle's toolchain resolution actively search
+    // for (not download — no network needed if it's already installed) a JDK 25 to compile
+    // with, independent of which JVM launched the daemon.
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
 }
 
 jar {

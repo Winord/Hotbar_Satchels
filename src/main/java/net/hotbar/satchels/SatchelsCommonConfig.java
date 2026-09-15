@@ -193,20 +193,23 @@ public class SatchelsCommonConfig {
                 "minecraft:grindstone",
                 "minecraft:brewing_stand",
                 "minecraft:hopper 0 -33",
+                "minecraft:dropper",
+                "minecraft:dispenser",
                 "minecraft:merchant 100 0 100 0",
                 "minecraft:beacon 28 53 28 0",
                 "farmersdelight:cooking_pot",
                 "curios:curios_container",
-                "accessories:original_menu",
-                "create:schematic_table 30 23 30 -8",
-                "create:schematicannon 29 77 29 -8",
-                "create:toolbox 0 81 0 -8",
-                "create:package_port 30 24 30 0",
-                "supplementaries:sack",
-                "slag:melter",
-                "slag:interface",
-                "slag:forge",
-                "brewinandchewin:keg"
+                // Verified against the real ohmega-1.5.21+26.1.2 jar: OhmegaMenusImpl registers
+                // its MenuType under "accessory_menu" with OhmegaCommon.MODID ("ohmega") as the
+                // namespace, so the key BuiltInRegistries.MENU.getKey(...) resolves to (and thus
+                // what SatchelMenuLocation.resolve()/isAllowed() actually compares against) is
+                // "ohmega:accessory_menu". No offset here — Ohmega's own accessory-slot columns
+                // are laid out dynamically based on slotTypes/config (see the decompiled
+                // AccessoryInventoryMenu constructor), so there's no single fixed pixel offset
+                // that's correct for every server config; tune "x y" here in-game if the satchel
+                // storage overlay doesn't line up against the player's own Ohmega layout.
+                "ohmega:accessory_menu",
+                "supplementaries:sack"
         );
     }
 }

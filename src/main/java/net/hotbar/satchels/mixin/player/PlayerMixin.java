@@ -97,17 +97,18 @@ public abstract class PlayerMixin extends LivingEntity implements IHaveSatchelDa
             // about them, regardless of which compat currently manages the equipped slot.
             satchelData.getSatchelInventory().dropAll(true);
 
-            // The equipped-satchel *bag item* itself is a different story. Under
-            // TrinketsCompat, satchelData.satchelSlotStack is only a mirror of what's
-            // actually equipped (see TrinketsCompat#equipmentChangedMaybeSatchel) — the
-            // real stack lives in Trinkets' own TrinketAttachment/inventory, and Trinkets
-            // drops its equipped trinkets on death itself. Dropping the mirrored copy
-            // here too would duplicate the bag. Only VanillaCompat has no other system
-            // backing the equipped slot (SatchelEquipmentSlot has no backing Container —
-            // SatchelData is the sole source of truth there), so only that path needs us
-            // to drop it manually. SatchelsCompat.VANILLA never loads while Trinkets Updated
-            // is present, so this check alone is enough to tell the two paths apart.
-            if (!SatchelsCompat.TRINKETS.isLoaded()) {
+            // The equipped-satchel *bag item* itself is a different story. Under a compat
+            // module like TrinketsCompat (archived on 26.1.x) or OhmegaCompat (once its equip
+            // path is implemented — see docs/accessory-compat-roadmap.md), satchelData
+            // .satchelSlotStack is only a mirror of what's actually equipped — the real stack
+            // lives in that mod's own attachment/inventory, which drops its own equipped items
+            // on death itself. Dropping the mirrored copy here too would duplicate the bag.
+            // Only VanillaCompat has no other system backing the equipped slot
+            // (SatchelEquipmentSlot has no backing Container — SatchelData is the sole source
+            // of truth there), so only that path needs us to drop it manually. Check
+            // VANILLA.isLoaded() directly (not "is some other compat NOT loaded") so this stays
+            // correct regardless of which other compat ends up active.
+            if (SatchelsCompat.VANILLA.isLoaded()) {
                 ItemStack slotStack = satchelData.getSatchelSlotStack();
                 if (!slotStack.isEmpty()) satchelData.getPlayer().drop(slotStack, true, false);
             }
