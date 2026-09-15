@@ -167,7 +167,27 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
         }
     }
 
+    /**
+     * Bugfix (satchel-in-satchel via ground pickup): a satchel item must never end up back in
+     * *any* satchel's storage — including its own or a different one currently active on the
+     * hotbar — even though {@link #canPlaceItem} (the single point of truth for that rule
+     * everywhere else — GUI clicks, shift-click, the number-key hotbar swap) never actually gets
+     * consulted here. This method writes straight into {@link #items} via
+     * {@link #addToInventory}/{@link #addAt}, bypassing the {@code Slot#mayPlace} machinery that
+     * every other insertion path goes through, so without this guard a satchel lying on the
+     * ground could be walked over while another satchel's storage is showing on the hotbar
+     * ({@code V}) and get pulled straight into it. Returning {@code false} unconditionally for a
+     * satchel stack sends both callers ({@code ItemEntityMixin}'s ground pickup and
+     * {@code GiveCommandMixin}'s {@code /give}) back to the plain
+     * {@code Inventory#add(ItemStack)} fallback — the ordinary Survival inventory — with no
+     * satchel-storage attempt at all. That also covers the case where the Survival inventory is
+     * full but the satchel still has a free slot: previously {@code pickup()} would fill that
+     * free slot regardless, now it simply refuses and the item stays on the ground like it would
+     * for any other item whose owning container is full.
+     */
     public boolean pickup(ItemStack stack) {
+        if (stack.is(ModTags.SATCHEL)) return false;
+
         Inventory inventory = this.parent.getPlayer().getInventory();
 
         int offset = parent.getHotbarOffset();
