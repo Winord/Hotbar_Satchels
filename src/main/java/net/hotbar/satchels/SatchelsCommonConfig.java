@@ -193,8 +193,14 @@ public class SatchelsCommonConfig {
                 "minecraft:grindstone",
                 "minecraft:brewing_stand",
                 "minecraft:hopper 0 -33",
-                "minecraft:dropper",
-                "minecraft:dispenser",
+                // Dropper and Dispenser have no dedicated MenuType of their own — both
+                // DropperMenu and DispenserMenu are constructed with MenuType.GENERIC_3x3,
+                // so BuiltInRegistries.MENU.getKey(menu.getType()) resolves to
+                // "minecraft:generic_3x3" for both screens. "minecraft:dropper" and
+                // "minecraft:dispenser" are not real registry keys and never match in
+                // SatchelMenuLocation.resolve()/isAllowed() — that's why the satchel row
+                // silently never showed up in either GUI. One shared entry covers both.
+                "minecraft:generic_3x3",
                 "minecraft:merchant 100 0 100 0",
                 "minecraft:beacon 28 53 28 0",
                 "farmersdelight:cooking_pot",
