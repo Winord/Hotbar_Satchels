@@ -180,9 +180,40 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         // position without moving the clip line, silently cropping exactly |offset.getB()| px off
         // the row every time. Adding offset.getB() here keeps the clip flush with the panel edge
         // the row is actually drawn against, whatever that offset is.
+        //
+        // BUGFIX (corner pixel), take 3 — two scissors, both permanently active: row 0 of every
+        // satchel_inventory_<tier>.png is fully transparent except for a single opaque pixel in
+        // each top corner (confirmed in the PNGs themselves: e.g. satchel_inventory_golden.png is
+        // transparent across row 0 except x=0 and x=63) — a deliberate 1px "tuck" meant to complete
+        // the main panel's bottom-left border corner. Take 1 shifted this boundary up by 1px to let
+        // that row through, which shifts the visibility threshold for *every* row of the sprite by
+        // the same 1px throughout the whole retract/expand tween (row r is visible when
+        // r >= satchelYOffset, versus r >= satchelYOffset + 1 before) — so a full extra row of the
+        // sprite's real body peeked out above the panel on every frame of the animation. Take 2
+        // kept this boundary as-is and drew the corner in a separate pass that only fired at full
+        // rest (satchelYOffset == 0), with a short alpha fade — but a pass that switches on and off
+        // is exactly what produces the flash on open/toggle, and the fade only smeared it.
+        //
+        // Now: this boundary stays exactly where it was (the tween is clipped precisely as before,
+        // no leak), and the corner is drawn by a second, permanently-active scissor pass below —
+        // one clip per frame each, in sequence, no gating. See renderSatchelInventoryCorners.
         guiGraphics.enableScissor(0, this.topPos + this.imageHeight + offset.getB(), screenWidth, screenHeight);
         satchels$screenWithSatchel.renderSatchelInventory(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight, forceHidden);
         guiGraphics.disableScissor();
+
+        // Second scissor pass for the corner pixel: a 1px-wide vertical clip at the row's left
+        // edge whose top is 1px above the boundary used just above — i.e. the one cell the pass
+        // above structurally cannot reach. Not gated on the retract/expand tween — it runs every
+        // frame the row renders and blits the sprite at the same animated offset the main pass
+        // does, so there is no tween-visibility state to toggle and therefore nothing to flash
+        // there. It IS gated on the row's hotbar slot-start position, per tier — see
+        // ScreenWithSatchel#renderSatchelInventoryCorners's javadoc for why a shifted row's
+        // corner pixel stops landing on the panel's own notch past a certain offset and would
+        // otherwise bleed onto the Survival GUI's hotbar border instead. Called after the main
+        // scissor is already disabled rather than nested inside it: GuiGraphics' scissor stack
+        // only ever *intersects* with whatever is already active, so a nested rect could never
+        // expose a pixel above the outer rect's own boundary.
+        satchels$screenWithSatchel.renderSatchelInventoryCorners(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight);
 
         int rowOffset = (int) satchels$screenWithSatchel.getInventoryYOffset();
         for (Slot slot : this.menu.slots) {
@@ -374,6 +405,12 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
             // default "0 -1") clipped exactly that many pixels off the icon row's bottom edge,
             // independently of (and in addition to) the identical bug in the background-bar
             // clip above. Both must move together with the same offset.
+            //
+            // Deliberately NOT given the same corner-pixel treatment as the background-bar clip
+            // (see that comment): a uniform 1px shift here would leak an extra row of real item
+            // icon content during the tween, the exact same way it did for the background sprite.
+            // Item icons don't have anything analogous to the sprite's corner pixels, so there's
+            // nothing to recover here in the first place.
             Tuple<Integer, Integer> overlayOffset = SatchelsCommonConfig.getOverlayOffset(location);
             int scissorBottomEdge = this.imageHeight + overlayOffset.getB();
             guiGraphics.enableScissor(0, scissorBottomEdge, screenWidth, screenHeight);
