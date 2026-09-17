@@ -14,7 +14,7 @@ public class SatchelRenderUtils {
         if (!itemStack.isEmpty()) {
             float f = itemStack.getPopTime() - deltaTracker.getGameTimeDeltaPartialTick(false);
             if (f > 0.0F) {
-                // 26.1: pose() returns org.joml.Matrix3x2fStack (2D), not PoseStack.
+                // pose() returns org.joml.Matrix3x2fStack (2D), not PoseStack.
                 // pushPose/popPose → pushMatrix/popMatrix; translate/scale lose Z component.
                 float g = 1.0F + f / 5.0F;
                 guiGraphics.pose().pushMatrix();
@@ -23,7 +23,7 @@ public class SatchelRenderUtils {
                 guiGraphics.pose().translate((float) (-(x + 8)), (float) (-(y + 12)));
             }
 
-            // 26.1: renderItem → item(ItemStack, x, y); renderItemDecorations → itemDecorations
+            // renderItem → item(ItemStack, x, y); renderItemDecorations → itemDecorations
             guiGraphics.item(itemStack, x, y);
             if (f > 0.0F) {
                 guiGraphics.pose().popMatrix();

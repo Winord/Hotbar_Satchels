@@ -47,8 +47,8 @@ public class SatchelAccess {
     /**
      * Whether the player's satchel model should render — a purely cosmetic concern, decoupled
      * from {@link #canAccessSatchel} (functional storage-access gating). This lets a satchel
-     * worn only in Accessories' cosmetic slot render without granting storage access. See
-     * {@code AccessoriesCompat#playerSatchelIsVisible}.
+     * worn only in a cosmetic trinket slot render without granting storage access. See
+     * {@code TrinketsCompat#playerSatchelIsVisible}.
      */
     public static boolean satchelIsVisible(Player player) {
         return IS_VISIBLE_PREDICATES.isEmpty() ||
@@ -66,7 +66,7 @@ public class SatchelAccess {
     /**
      * The stack {@code SatchelLayer} should render on the player's back — prefers a cosmetic
      * override over the functional satchel when a compat module distinguishes the two (see
-     * {@code AccessoriesCompat#getSatchelVisualStack}). Separate from
+     * {@code TrinketsCompat#getSatchelVisualStack}). Separate from
      * {@link #SATCHEL_STACK_GETTERS}/{@link #getSatchelStack}: {@link #getSatchelTier}/
      * {@link #getSatchelSlotCount} are built on {@link #getSatchelStack} and must keep
      * reflecting real storage capacity regardless of cosmetic skin. Falls back to

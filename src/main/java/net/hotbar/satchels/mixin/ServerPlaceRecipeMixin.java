@@ -21,30 +21,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import java.util.List;
 
 /**
- * 26.1: {@code ServerPlaceRecipe} was rebuilt from the ground up — decompiled the real class to
- * confirm the new shape (not guessed). There is no more instance {@code recipeClicked} method:
- * the recipe-book click now goes through {@code AbstractCraftingMenu#handlePlacement}, which
- * calls the new {@code public static placeRecipe(CraftingMenuAccess, int, int, List, List,
- * Inventory, RecipeHolder, boolean, boolean)} factory method directly — {@code ServerPlaceRecipe}
- * itself is now only constructed internally by that static method (private constructor).
+ * {@code ServerPlaceRecipe} has no instance {@code recipeClicked} method any more: the
+ * recipe-book click goes through {@code AbstractCraftingMenu#handlePlacement}, which calls a
+ * static {@code placeRecipe(...)} factory method directly. {@code stackedContents} is no
+ * longer a shadowable field — item availability is a local {@code StackedItemContents} inside
+ * {@code placeRecipe}, captured below via MixinExtras {@code @Local}.
  * <p>
- * {@code stackedContents} is gone as a field entirely; item availability is built as a local
- * {@code StackedItemContents} inside {@code placeRecipe} itself, right before
- * {@code menu.fillCraftSlotsStackedContents(availableItems)} — captured below via MixinExtras
- * {@code @Local} since it's no longer a shadowable field.
- * <p>
- * {@code moveItemToGrid} also changed shape: {@code (Slot, Holder<Item>, int)} instead of
- * {@code (Slot, ItemStack, int)}, since the caller now only knows which ingredient
- * {@code Holder<Item>} matched, not a concrete stack — mirrors
- * {@code Inventory#findSlotMatchingCraftingIngredient(Holder<Item>, ItemStack)}, which is why
- * {@link SatchelInventory#findSlotMatchingCraftingIngredient} was added to match it.
+ * {@code moveItemToGrid} takes {@code (Slot, Holder<Item>, int)}, not {@code (Slot, ItemStack,
+ * int)} — the caller only knows which ingredient {@code Holder<Item>} matched, not a concrete
+ * stack, mirroring {@code Inventory#findSlotMatchingCraftingIngredient}; see
+ * {@link SatchelInventory#findSlotMatchingCraftingIngredient}.
  */
 @Mixin(ServerPlaceRecipe.class)
 public class ServerPlaceRecipeMixin {
 
-    // 26.1: `inventory` is still a private final instance field on ServerPlaceRecipe (confirmed
-    // via decompile) — Mixin can shadow private fields regardless of Java-level visibility, this
-    // is unrelated to the `stackedContents` field having been removed entirely (see below).
     @org.spongepowered.asm.mixin.Shadow
     @org.spongepowered.asm.mixin.Final
     private Inventory inventory;
@@ -76,15 +66,9 @@ public class ServerPlaceRecipeMixin {
 
     @ModifyReturnValue(method = "moveItemToGrid", at = @At(value = "RETURN", ordinal = 0))
     private int satchels$searchSatchel(int original, Slot targetSlot, Holder<Item> itemInInventory, int count) {
-        // Deliberate behavior note vs. the pre-port code: the 1.21.1 version returned a hardcoded
-        // -1 here (both when the satchel is inaccessible and when it has no match), rather than
-        // `original`. -1 is vanilla's sentinel for "give up entirely" in the while-loop caller
-        // (see the decompiled placeRecipe above), so blindly returning -1 would wrongly abort
-        // vanilla's own loop even in the case where vanilla's own inventory search had already
-        // partially succeeded this round (original >= 0, meaning "still need more, keep going").
-        // Falling back to `original` here only changes behavior when it was previously masking a
-        // non-negative in-progress vanilla result — flagging in case this diverges from an
-        // intentional choice in the pre-port code that isn't obvious from the diff alone.
+        // Falls back to `original` (not a hardcoded -1) when the satchel is inaccessible or has
+        // no match: -1 is vanilla's sentinel to abort the whole placeRecipe loop, which would
+        // wrongly cut off a still-in-progress vanilla search (original >= 0, "keep going").
         SatchelData data = SatchelData.get(this.inventory.player);
 
         if (!data.canAccess()) return original;

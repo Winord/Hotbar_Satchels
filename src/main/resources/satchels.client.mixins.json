@@ -6,7 +6,6 @@
   "mixins": [
     "screen.AbstractContainerScreenMixin",
     "screen.CreativeModeInventoryScreenMixin",
-    "screen.HorseInventoryScreenMixin",
     "screen.RecipeBookComponentMixin"
   ],
   "injectors": {

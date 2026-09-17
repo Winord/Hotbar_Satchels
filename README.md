@@ -1,8 +1,8 @@
 # Hotbar Satchels
 
-A Fabric mod for Minecraft 1.21.1 that adds equippable satchels providing extra hotbar storage.
+A Fabric mod for Minecraft 26.1.X that adds equippable satchels providing extra hotbar storage.
 
-![Minecraft 1.21.1](https://img.shields.io/badge/Minecraft-1.21.1-green)
+![Minecraft 26.1.X](https://img.shields.io/badge/Minecraft-26.1.X-green)
 ![Fabric](https://img.shields.io/badge/Loader-Fabric-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow)
 
@@ -13,7 +13,7 @@ A Fabric mod for Minecraft 1.21.1 that adds equippable satchels providing extra 
 - **Three tiers of satchels** — Golden (3 slots), Diamond (6 slots), Netherite (9 slots).
 - Satchel contents are displayed **above the hotbar** and can be swapped with the first hotbar slots using a keybind (default `V`).
 - Works seamlessly inside **vanilla and modded container GUIs**.
-- Integrates with **[Accessories](https://modrinth.com/mod/accessories)** (equip slot: Chest group).
+- Integrates with **[Ohmega](https://modrinth.com/mod/ohmega)** (accessory slot).
 - Satchels are **dyeable** — apply any dye in a crafting table.
 - Configurable via an in-game config screen (requires [Mod Menu](https://modrinth.com/mod/modmenu)).
 
@@ -33,10 +33,11 @@ A Fabric mod for Minecraft 1.21.1 that adds equippable satchels providing extra 
 
 | Mod | Notes |
 |---|---|
-| [Accessories](https://modrinth.com/mod/accessories) | Equip satchels in the dedicated slot |
+| [Ohmega](https://modrinth.com/mod/ohmega) | Equip satchels in the dedicated accessory slot |
+| [Trinkets Updated](https://modrinth.com/mod/trinkets-updated) | Supported, but currently disabled pending an upstream bugfix|
 | [Raised](https://modrinth.com/mod/raised) | Hotbar overlay adjusts correctly with the raised hotbar |
 | [JEI](https://modrinth.com/mod/jei) | Recipes shown in JEI |
-| [EMI](https://modrinth.com/mod/emi) | Recipes shown in EMI |
+| [Flashback](https://modrinth.com/mod/flashback) | Satchel state renders correctly in replays |
 | [Mod Menu](https://modrinth.com/mod/modmenu) | In-game config screen |
 
 All integrations are optional — the mod works without any of them.

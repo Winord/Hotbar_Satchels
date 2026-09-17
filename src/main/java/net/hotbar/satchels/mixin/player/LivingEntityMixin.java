@@ -12,42 +12,18 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * 26.1: {@code setItemSlot(EquipmentSlot, ItemStack)} moved — {@code Player} no longer overrides
- * it at all (confirmed via {@code javap}: it only shows up on {@code LivingEntity} now), so a
- * {@code @Mixin(Player.class)} injection targeting it (as {@code PlayerMixin} used to) can't find
- * it — Mixin only matches methods actually declared in the bytecode of the class(es) named in
- * {@code @Mixin(...)}, not ones merely inherited.
+ * {@code setItemSlot(EquipmentSlot, ItemStack)} is declared on {@code LivingEntity}, not
+ * {@code Player}, and as of 26.1 has a single unified body,
+ * {@code this.onEquipItem(slot, this.equipment.set(slot, itemStack), itemStack)}, with no
+ * per-slot branching left to hook mid-method — hence the cancellable {@code @At("HEAD")}
+ * injection here, targeting {@code LivingEntity} (every mob, not just players; the
+ * {@code instanceof Player} guard below restricts the actual redirect).
  * <p>
- * The method's whole body changed shape too, which is why this is a separate {@code @At("HEAD")}
- * injection rather than the old inner-call target: decompiled the real 26.1 body and it's now a
- * single line, {@code this.onEquipItem(slot, this.equipment.set(slot, itemStack), itemStack);} —
- * equipment storage moved from a raw {@code NonNullList<ItemStack>} (indexed by ordinal, which is
- * what the old {@code NonNullList#set(int, Object)} injection target was hooking) to a typed
- * container keyed directly by {@code EquipmentSlot}. There's no longer an inner call to hook
- * into mid-method the same way; a plain cancellable {@code HEAD} injection does the same job
- * (redirect before vanilla's own assignment happens at all) and is more resilient to this body
- * changing shape again in the future.
- * <p>
- * Since this now targets {@code LivingEntity} — which every mob extends, not just players — this
- * mixin applies to all living entities at the bytecode level; the {@code instanceof Player} guard
- * below is what actually restricts the satchel-redirect behavior to players, same as before.
- * <p>
- * <b>bugfix (post-26.1-port):</b> in 1.21.1, {@code Player#setItemSlot} had three separate
- * branches — {@code MAINHAND} wrote into {@code inventory.items}, {@code OFFHAND} into
- * {@code inventory.offhand}, and armor slots into {@code inventory.armor} — three distinct
- * backing lists. The old satchel hook targeted the inner {@code NonNullList#set} call inside
- * the {@code MAINHAND} branch specifically, so it was structurally impossible for it to ever
- * fire for an armor or offhand write. The 26.1 equipment refactor collapsed all of that into
- * the single body described above ({@code this.equipment.set(slot, itemStack)}), with no
- * per-slot branching left to hook into — so this HEAD injection, lacking any slot-type check
- * of its own, was firing (and redirecting into the satchel, then cancelling) for every
- * equipment slot, not just the held item. Right-clicking a chestplate/elytra out of a satchel
- * slot would get its {@code setItemSlot(CHEST, ...)} redirected into the satchel's own storage
- * instead of actually equipping — and the follow-up hand-clear write (also unified through
- * {@code setItemSlot} in 26.1, now targeting {@code MAINHAND} with an empty stack) would then
- * land on that same satchel index a second time, wiping it back to empty. Net effect: the item
- * vanished instead of equipping. The explicit {@code MAINHAND} check below restores the
- * original scope.
+ * <b>The explicit {@code MAINHAND} check is required, not incidental:</b> without it, this
+ * injection fires for every equipment slot, so right-clicking a chestplate/elytra out of a
+ * satchel slot gets redirected into the satchel's storage instead of actually equipping, and
+ * the following hand-clear write (also routed through {@code setItemSlot} now) wipes that same
+ * satchel index back to empty — the item vanishes instead of equipping.
  */
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityMixin {

@@ -105,12 +105,8 @@ public class SatchelsAdvancementProvider implements DataProvider {
         description.addProperty("translate", "satchels.advancements.root.description");
         display.add("description", description);
 
-        // 26.1: the "background" field is now a sprite id resolved against the gui atlas, not
-        // a raw texture path — "minecraft:textures/gui/advancements/backgrounds/adventure.png"
-        // (the 1.21.1 form) silently fails to resolve and the tab renders with no background.
-        // Confirmed against the real merged jar: every vanilla tab root (adventure/husbandry/
-        // end/nether/story) now uses the short form "minecraft:gui/advancements/backgrounds/
-        // <name>" — no "textures/" prefix, no ".png" extension.
+        // "background" is a sprite id resolved against the gui atlas, not a raw texture path
+        // — "minecraft:gui/advancements/backgrounds/adventure", no "textures/" prefix or ".png".
         display.addProperty("background", "minecraft:gui/advancements/backgrounds/adventure");
         display.addProperty("frame", "task");
         display.addProperty("show_toast", false);
@@ -240,9 +236,8 @@ public class SatchelsAdvancementProvider implements DataProvider {
      * Builds an {@code inventory_changed} criterion that fires when the player has the given
      * item in their inventory.
      *
-     * <p>In MC 1.21.1 the inner item-condition field is {@code "items"} (the item id), NOT
-     * {@code "id"} — using {@code "id"} silently ignores the condition and fires on any
-     * inventory change.
+     * <p>The inner item-condition field is {@code "items"} (the item id), NOT {@code "id"} —
+     * using {@code "id"} silently ignores the condition and fires on any inventory change.
      */
     private static JsonObject inventoryChangedCriterion(String itemId) {
         JsonObject itemCondition = new JsonObject();

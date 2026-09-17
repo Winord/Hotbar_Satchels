@@ -72,7 +72,7 @@ public enum SatchelTier {
      * Id of this tier's "worn on the back" model, e.g. {@code satchels:satchel_worn_golden}
      * — a static Blockbench-geometry model (not datagen'd, see {@code SatchelsModelProvider}).
      * <p>
-     * 26.1: the old Fabric "extra model" registration API ({@code ModelLoadingPlugin.Context
+     * the old Fabric "extra model" registration API ({@code ModelLoadingPlugin.Context
      * #addModels}) was removed with no direct replacement. Traced {@code ModelManager} /
      * {@code ClientItemInfoLoader} in the real jar and confirmed any json under
      * {@code assets/<ns>/items/} is auto-baked and retrievable via

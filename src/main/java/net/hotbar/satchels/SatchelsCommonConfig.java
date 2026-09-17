@@ -193,27 +193,12 @@ public class SatchelsCommonConfig {
                 "minecraft:grindstone",
                 "minecraft:brewing_stand",
                 "minecraft:hopper 0 -33",
-                // Dropper and Dispenser have no dedicated MenuType of their own — both
-                // DropperMenu and DispenserMenu are constructed with MenuType.GENERIC_3x3,
-                // so BuiltInRegistries.MENU.getKey(menu.getType()) resolves to
-                // "minecraft:generic_3x3" for both screens. "minecraft:dropper" and
-                // "minecraft:dispenser" are not real registry keys and never match in
-                // SatchelMenuLocation.resolve()/isAllowed() — that's why the satchel row
-                // silently never showed up in either GUI. One shared entry covers both.
                 "minecraft:generic_3x3",
                 "minecraft:merchant 100 0 100 0",
                 "minecraft:beacon 28 53 28 0",
+                "minecraft:horse",
                 "farmersdelight:cooking_pot",
                 "curios:curios_container",
-                // Verified against the real ohmega-1.5.21+26.1.2 jar: OhmegaMenusImpl registers
-                // its MenuType under "accessory_menu" with OhmegaCommon.MODID ("ohmega") as the
-                // namespace, so the key BuiltInRegistries.MENU.getKey(...) resolves to (and thus
-                // what SatchelMenuLocation.resolve()/isAllowed() actually compares against) is
-                // "ohmega:accessory_menu". No offset here — Ohmega's own accessory-slot columns
-                // are laid out dynamically based on slotTypes/config (see the decompiled
-                // AccessoryInventoryMenu constructor), so there's no single fixed pixel offset
-                // that's correct for every server config; tune "x y" here in-game if the satchel
-                // storage overlay doesn't line up against the player's own Ohmega layout.
                 "ohmega:accessory_menu",
                 "supplementaries:sack"
         );

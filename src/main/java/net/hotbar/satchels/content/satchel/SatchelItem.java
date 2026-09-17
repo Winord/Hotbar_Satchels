@@ -24,13 +24,6 @@ public class SatchelItem extends Item {
         return tier;
     }
 
-    // TODO(26.1 port): ItemInteractionResult was folded into InteractionResult back around
-    // 1.21.3 (Item#use / Block#useItemOn now return plain InteractionResult; see e.g.
-    // PumpkinBlock#useItemOn's signature change). PASS_TO_DEFAULT_BLOCK_INTERACTION doesn't have
-    // a literal 1:1 constant on InteractionResult — PASS is the closest equivalent for "let
-    // vanilla handle it", but double-check against generated sources that this Item#use
-    // override signature (InteractionResult vs some other overload) still matches what
-    // vanilla's Item class declares in 26.1.
     @Override
     @NotNull
     public InteractionResult use(Level level, Player player, InteractionHand hand) {

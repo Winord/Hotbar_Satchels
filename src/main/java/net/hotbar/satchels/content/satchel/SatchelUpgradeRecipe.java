@@ -41,29 +41,17 @@ import java.util.Optional;
  * code. This class exists purely to give the Diamond step the same behavior for color
  * specifically, without pulling in every other component a smithing upgrade would carry over.
  * <p>
- * 26.1: originally written extending {@code ShapedRecipe} directly and delegating to
- * {@code super.assemble(...)} — that doesn't compile in 26.1 for a reason specific to this
- * subclassing approach, confirmed via javap: {@code ShapedRecipe} itself overrides
- * {@code getSerializer()} to return the concrete {@code RecipeSerializer<ShapedRecipe>} (not the
- * wildcard {@code RecipeSerializer<? extends NormalCraftingRecipe>} that {@code
- * NormalCraftingRecipe} declares). Java's covariant-return-type rule requires an override's
- * return type to be a *subtype* of the method it overrides, and generics are invariant —
- * {@code RecipeSerializer<SatchelUpgradeRecipe>} is not a subtype of
- * {@code RecipeSerializer<ShapedRecipe>} even though {@code SatchelUpgradeRecipe} is a subtype of
- * {@code ShapedRecipe}. So a custom-serializer subclass of {@code ShapedRecipe} specifically
- * cannot override {@code getSerializer()} with its own return type — this was always going to be
- * a problem once the surrounding compile errors were fixed enough to reach it, independent of
- * anything else that changed in 26.1.
- * <p>
- * Fixed by extending {@code NormalCraftingRecipe} directly instead (its {@code getSerializer()}
- * bound is the permissive wildcard, so the covariant override is valid) and composing a
- * {@code ShapedRecipePattern} field, replicating {@code ShapedRecipe}'s own
- * {@code matches}/{@code createPlacementInfo}/{@code assemble}/{@code display} bodies exactly
- * (decompiled the real class with CFR to copy these verbatim rather than guess). This is also
- * why {@code assemble} takes only {@code CraftingInput} now, not
- * {@code (CraftingInput, HolderLookup.Provider)} — confirmed via the decompiled
- * {@code Recipe<T>} interface that {@code assemble(T)} lost its second parameter entirely in
- * 26.1, independent of the subclassing issue above.
+ * Extends {@code NormalCraftingRecipe} directly rather than {@code ShapedRecipe}: {@code
+ * ShapedRecipe} overrides {@code getSerializer()} to return the concrete
+ * {@code RecipeSerializer<ShapedRecipe>}, not the permissive wildcard
+ * {@code RecipeSerializer<? extends NormalCraftingRecipe>} that {@code NormalCraftingRecipe}
+ * declares — since generics are invariant, a custom-serializer subclass of {@code ShapedRecipe}
+ * can't override {@code getSerializer()} with its own return type. {@code NormalCraftingRecipe}'s
+ * wildcard bound makes the covariant override valid instead, at the cost of composing a
+ * {@code ShapedRecipePattern} field and replicating {@code ShapedRecipe}'s own
+ * {@code matches}/{@code createPlacementInfo}/{@code assemble}/{@code display} bodies directly.
+ * {@code assemble} takes only {@code CraftingInput}, matching the current {@code Recipe<T>}
+ * interface.
  */
 public class SatchelUpgradeRecipe extends NormalCraftingRecipe {
     private final ShapedRecipePattern pattern;
@@ -146,9 +134,7 @@ public class SatchelUpgradeRecipe extends NormalCraftingRecipe {
 
     /**
      * Mirrors {@code ShapedRecipe}'s own {@code MAP_CODEC}/{@code STREAM_CODEC}/{@code SERIALIZER}
-     * field-for-field (confirmed via decompile — same flattened {@code commonInfo}/
-     * {@code bookInfo}/{@code pattern} groups plus a {@code "result"}-keyed
-     * {@link ItemStackTemplate}), so the generated recipe JSON only needs its {@code "type"}
+     * field-for-field, so the generated recipe JSON only needs its {@code "type"}
      * changed. Needed as its own serializer (rather than reusing {@code
      * RecipeSerializer.SHAPED_RECIPE}) because recipe deserialization dispatches purely on the
      * JSON {@code "type"} id — the only way to get {@code SatchelUpgradeRecipe} instances out of
@@ -178,9 +164,9 @@ public class SatchelUpgradeRecipe extends NormalCraftingRecipe {
                 SatchelUpgradeRecipe::new
         );
 
-        // 26.1: RecipeSerializer.of(...) doesn't exist — RecipeSerializer is now a record with a
+        // RecipeSerializer.of(...) doesn't exist — RecipeSerializer is now a record with a
         // public (MapCodec<T>, StreamCodec<...>) constructor; construct it directly, exactly like
-        // vanilla's own ShapedRecipe.SERIALIZER does (confirmed via decompile).
+        // vanilla's own ShapedRecipe.SERIALIZER does.
         public static final RecipeSerializer<SatchelUpgradeRecipe> INSTANCE =
                 new RecipeSerializer<>(CODEC, STREAM_CODEC);
     }

@@ -26,17 +26,14 @@ import java.util.OptionalInt;
  * {@link SatchelsEventHooks#onMenuOpen} (checking for an existing {@code SatchelInventorySlot})
  * covers both paths.
  * <p>
- * 26.1 port note: {@code DimensionTransition} moved from {@code net.minecraft.server.level}
- * to {@code net.minecraft.world.level.portal} in 26.1.
+ * {@code DimensionTransition} lives in {@code net.minecraft.world.level.portal} (not
+ * {@code net.minecraft.server.level}).
  * <p>
- * 26.1 port note: {@code ServerPlayer#changeDimension(TeleportTransition)} is gone —
- * confirmed via {@code javap} on the real merged jar. {@code Entity} declares
- * {@code teleport(TeleportTransition): Entity}, and {@code ServerPlayer} now overrides it with
- * a covariant return, {@code teleport(TeleportTransition): ServerPlayer} — the
- * Entity-returning descriptor only exists as a synthetic {@code ACC_BRIDGE} method that just
- * delegates to the real one, same situation as the {@code ShapedRecipe#getSerializer()}
- * covariant-return case documented in the fix log. Injecting into {@code teleport} (not the
- * bridge) with {@code CallbackInfoReturnable<ServerPlayer>} targets the real method body.
+ * {@code ServerPlayer#changeDimension(TeleportTransition)} is gone; {@code Entity} declares
+ * {@code teleport(TeleportTransition): Entity}, and {@code ServerPlayer} overrides it with a
+ * covariant return, {@code teleport(TeleportTransition): ServerPlayer} — the Entity-returning
+ * descriptor is only a synthetic {@code ACC_BRIDGE} method. Injecting into {@code teleport}
+ * (not the bridge) with {@code CallbackInfoReturnable<ServerPlayer>} targets the real method.
  */
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixin {

@@ -78,12 +78,12 @@ public class Satchels implements ModInitializer {
 
     public static void initExtra() {
         for (var satchel : ModItems.ALL_SATCHELS) {
-            // 26.1: CauldronInteraction.WATER/.DYED_ITEM removed.
+            // CauldronInteraction.WATER/.DYED_ITEM removed.
             // CauldronInteractions.WATER is a Dispatcher; DYED_ITEM replaced by inline lambda.
             CauldronInteractions.WATER.put(satchel, (state, level, pos, player, hand, stack) -> {
                 if (!stack.has(DataComponents.DYED_COLOR)) return net.minecraft.world.InteractionResult.PASS;
-                // 26.1: Level.isClientSide is now a private field with a public isClientSide()
-                // method instead (confirmed via javap) — same name, now needs parens.
+                // Level.isClientSide is now a private field with a public isClientSide()
+                // method instead — same name, now needs parens.
                 if (!level.isClientSide()) {
                     stack.remove(DataComponents.DYED_COLOR);
                     player.awardStat(net.minecraft.stats.Stats.USE_CAULDRON);

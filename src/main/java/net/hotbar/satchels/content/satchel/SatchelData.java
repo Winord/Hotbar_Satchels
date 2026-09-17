@@ -58,8 +58,6 @@ public class SatchelData implements NbtSerializable<CompoundTag> {
         this.player = player;
         this.satchelInventory = new SatchelInventory(this);
         this.hotbarOffset = 0;
-        // Tier (and so slot-start) isn't known until a satchel is actually equipped — see
-        // updateTierFromStack, which sets it correctly once that happens.
     }
 
     public static SatchelData get(Player player) {
@@ -69,9 +67,8 @@ public class SatchelData implements NbtSerializable<CompoundTag> {
     public void copyFrom(SatchelData data) {
         List<ItemStack> original = data.satchelInventory.getItems();
 
-        // Resize first: the target may still be at its zero-slot default (e.g. respawn
-        // without keepInventory, where setSatchelSlotStack — and the resize it triggers —
-        // is skipped) while the source already has a real tier-sized inventory.
+        // Resize first: the target may still be at its zero-slot default (e.g. respawn without
+        // keepInventory) while the source already has a real tier-sized inventory.
         this.satchelInventory.resizeTo(original.size());
         this.currentTier = data.currentTier;
 
@@ -79,30 +76,14 @@ public class SatchelData implements NbtSerializable<CompoundTag> {
     }
 
     /**
-     * Sends the owning client everything needed to rebuild an accurate client-side mirror of
-     * this {@code SatchelData} right after their {@code LocalPlayer} gets recreated: initial
-     * login, respawn, or a dimension change (all three go through
-     * {@code ClientboundRespawnPacket} client-side — see
-     * {@code ServerPlayerMixin#satchels$onChangeDimension}'s javadoc). {@link #sendData()}
-     * alone only restores the open/closed flag; without also resending the equipped stack, the
-     * fresh client-side mirror keeps {@code currentTier == null} (a 0-slot
-     * {@code satchelInventory}) until *something else* happens to independently retrigger
-     * {@code setSatchelSlotStack} client-side (any live equip-slot change does this normally
-     * during play — that's the only path that was updating it before this method existed).
-     * <p>
-     * Until that first retrigger, {@code SatchelInventorySlot#isActive()}/{@code mayPlace()}'s
-     * live tier-bounds check (see that class) treats every satchel slot as out of range — even
-     * though the actual stored items already arrived correctly and on schedule via the
-     * ordinary {@code InventoryMenu} content sync, since that menu's slot *list* doesn't depend
-     * on any of this. The symptom is the satchel row rendering as if empty right after
-     * (re)joining, until the player takes something out or puts something in — which happens to
-     * fire that equip-change event and fix the tier out of band. Calling this here closes that
-     * gap by proactively sending the real equipped stack (and so the real tier) as part of the
-     * same resync, instead of waiting on an unrelated interaction to do it by accident.
-     * <p>
-     * Also sends a full inventory snapshot via {@link #sendInventoryToClient()} so the hotbar
-     * overlay can render item icons even when no container menu is open (the vanilla
-     * {@code InventoryMenu} broadcastChanges sync only runs while a menu is open).
+     * Sends the owning client everything needed to rebuild an accurate mirror of this
+     * {@code SatchelData} right after their {@code LocalPlayer} is recreated: login, respawn,
+     * or a dimension change. {@link #sendData()} alone only restores the open/closed flag —
+     * without also resending the equipped stack, the fresh client mirror stays at
+     * {@code currentTier == null} until something else happens to independently re-trigger
+     * {@code setSatchelSlotStack}, which briefly renders the satchel row as empty right after
+     * (re)joining. Also sends a full inventory snapshot via {@link #sendInventoryToClient()} so
+     * the hotbar overlay can render item icons even when no container menu is open.
      */
     public void resyncToClient() {
         this.sendData();
@@ -156,9 +137,8 @@ public class SatchelData implements NbtSerializable<CompoundTag> {
 
     /**
      * Resizes {@link #satchelInventory} to match the newly-equipped stack's tier. Safe to call
-     * unconditionally: {@code AccessoriesCompat}'s {@code CanUnequipCallback} handler already
-     * guarantees a satchel can only be swapped for a different-tier one while empty, so a
-     * resize here never has contents to preserve or drop. An empty stack (unequip) is a no-op.
+     * unconditionally: a tier swap is only possible while the satchel is empty, so a resize
+     * here never has contents to preserve or drop. An empty stack (unequip) is a no-op.
      */
     private void updateTierFromStack(@NotNull ItemStack stack) {
         if (!(stack.getItem() instanceof SatchelItem satchelItem)) return;
@@ -167,8 +147,7 @@ public class SatchelData implements NbtSerializable<CompoundTag> {
         this.satchelInventory.resizeTo(this.currentTier.getSlotCount());
 
         // Runtime isLocalPlayer() check to reach into client-only config from shared code (this
-        // class runs on both sides). Once the local player's tier is known, apply — and sync
-        // to the server — that tier's persisted hotbar slot-start.
+        // class runs on both sides).
         if (player.isLocalPlayer()) {
             SatchelsClientConfig.applyPersistedOffsetForTier(this, this.currentTier);
         }
@@ -266,10 +245,6 @@ public class SatchelData implements NbtSerializable<CompoundTag> {
         tag.put(KEY_INVENTORY, inventory);
 
         if (!satchelSlotStack.isEmpty()) {
-            // 26.1: ItemStack.save(Provider, CompoundTag) removed. ItemStack.CODEC is already a
-            // Codec<ItemStack> (not a MapCodec needing .codec()) — encode directly.
-            // net.minecraft.Util moved to net.minecraft.util.Util, and logAndPause was renamed
-            // to logAndPauseIfInIde — both confirmed against the real 26.1.2 jar.
             ItemStack.CODEC
                 .encodeStart(provider.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), satchelSlotStack)
                 .resultOrPartial(e -> net.minecraft.util.Util.logAndPauseIfInIde("SatchelData save slot: " + e))
@@ -283,14 +258,10 @@ public class SatchelData implements NbtSerializable<CompoundTag> {
     public void deserializeNBT(@NotNull HolderLookup.Provider provider, @NotNull CompoundTag tag) {
         this.active = tag.getBoolean(KEY_ACTIVE).orElse(false);
 
-        // Equipped stack first: this resizes satchelInventory to the right tier (via
-        // updateTierFromStack) *before* the inventory contents below are loaded into it —
-        // loading order matters, otherwise slots past the default zero-size would be silently
-        // dropped by SatchelInventory#deserializeNBT's bounds check.
+        // Equipped stack first: resizes satchelInventory to the right tier before the
+        // inventory contents below are loaded, or slots past the default zero-size would be
+        // silently dropped by SatchelInventory#deserializeNBT's bounds check.
         if (tag.contains(KEY_SLOT_ITEM)) {
-            // 26.1: ItemStack.parse(Provider, Tag) removed. Decode via ItemStack.CODEC.
-            // CompoundTag.getOptional(String) is private in 26.1 (confirmed via javap) — tag.get(String)
-            // is the public accessor; safe to call unguarded here since tag.contains(...) already passed.
             ItemStack.CODEC
                 .parse(provider.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), tag.get(KEY_SLOT_ITEM))
                 .resultOrPartial(e -> {})

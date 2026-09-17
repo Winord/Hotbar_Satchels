@@ -62,7 +62,7 @@ public class SatchelsLanguageProvider extends FabricLanguageProvider {
         translationBuilder.add("satchels.configuration.satchel_layer", "Render Satchel on Players");
         translationBuilder.add("satchels.configuration.shift_swap", "Satchel Slot Swapping");
 
-        // Per-tier hotbar slot-start sliders (§11.4).
+        // Per-tier hotbar slot-start sliders.
         // Netherite has no entry — it always occupies the full hotbar.
         translationBuilder.add("satchels.configuration.golden_position", "Golden Satchel Position");
         translationBuilder.add("satchels.configuration.golden_position.tooltip", "The hotbar slot the Golden Satchel starts from.");

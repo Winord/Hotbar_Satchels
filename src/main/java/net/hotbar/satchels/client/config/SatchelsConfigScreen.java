@@ -50,8 +50,8 @@ public final class SatchelsConfigScreen {
 
         ConfigEntryBuilder entries = builder.entryBuilder();
 
-        buildServerCategory(builder, entries);
         buildClientCategory(builder, entries);
+        buildServerCategory(builder, entries);
 
         return builder.build();
     }
@@ -64,7 +64,6 @@ public final class SatchelsConfigScreen {
         ConfigCategory server = builder.getOrCreateCategory(
                 Component.translatable("satchels.configuration.server"));
 
-        // log_opened_menu — bool toggle
         server.addEntry(entries
                 .startBooleanToggle(
                         Component.translatable("satchels.configuration.log_opened_menu"),
@@ -73,7 +72,6 @@ public final class SatchelsConfigScreen {
                 .setSaveConsumer(SatchelsCommonConfig::setLogOpenedMenu)
                 .build());
 
-        // allowed_menus — list of strings
         server.addEntry(entries
                 .startStrList(
                         Component.translatable("satchels.configuration.allowed_menus"),
@@ -91,7 +89,6 @@ public final class SatchelsConfigScreen {
         ConfigCategory client = builder.getOrCreateCategory(
                 Component.translatable("satchels.configuration.client"));
 
-        // shift_swap
         client.addEntry(entries
                 .startBooleanToggle(
                         Component.translatable("satchels.configuration.shift_swap"),
@@ -100,7 +97,6 @@ public final class SatchelsConfigScreen {
                 .setSaveConsumer(SatchelsClientConfig::setShiftSwap)
                 .build());
 
-        // satchel_layer
         client.addEntry(entries
                 .startBooleanToggle(
                         Component.translatable("satchels.configuration.satchel_layer"),
@@ -109,7 +105,6 @@ public final class SatchelsConfigScreen {
                 .setSaveConsumer(SatchelsClientConfig::setSatchelLayer)
                 .build());
 
-        // gui_animation
         client.addEntry(entries
                 .startBooleanToggle(
                         Component.translatable("satchels.configuration.gui_animation"),

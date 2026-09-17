@@ -23,22 +23,15 @@ import java.util.function.Predicate;
 /**
  * Redirects vanilla {@code Inventory} operations (selected-item lookup, destroy speed,
  * "place item back", pick-block, clearing/counting matching items) to also consider the
- * satchel's contents when it's active, so the satchel's 6 slots behave like an extension of
+ * satchel's contents when it's active, so the satchel's slots behave like an extension of
  * the hotbar.
  * <p>
- * Regression note (post-launch bugfix): the client-side "deselect on pick" hook that used to live
- * here was removed. In 1.21.1 it was narrowly scoped to {@code setPickedItem} (F-key/middle-click
- * pick, the only thing that wrote {@code selected} outside normal navigation). In 26.1,
- * {@code setSelectedSlot(int)} became the *universal* write point for every selection path —
- * scroll wheel, number keys, server sync, pick-item alike (confirmed via a full-jar bytecode
- * scan: {@code Minecraft}, {@code MouseHandler}, {@code ClientPacketListener},
- * {@code ServerGamePacketListenerImpl} and {@code Inventory} itself all call it directly). A
- * generic hook on that method fired the "deactivate satchel" logic on *any* selection change,
- * including a player simply scrolling onto one of the satchel's own hotbar slots — which
- * incorrectly closed the satchel instead of just selecting that slot. Since pick-item is now
- * fully server-authoritative (see {@code ServerGamePacketListenerImplMixin}, which already has
- * the correctly-scoped server-side twin of this check), the client no longer needs — or can
- * correctly perform — this detection on its own; it now just waits for the server's
+ * There is deliberately no client-side "deselect on pick" hook here: {@code setSelectedSlot(int)}
+ * is the universal write point for every selection path (scroll wheel, number keys, server sync,
+ * pick-item alike), so a generic hook on it can't distinguish "picked an item" from "scrolled
+ * onto a satchel slot" and would incorrectly close the satchel on the latter. Pick-item's
+ * satchel-priority logic is fully server-authoritative instead — see
+ * {@code ServerGamePacketListenerImplMixin} — and the client just follows the server's
  * {@code SatchelStatusPacketS2C} like any other state sync.
  */
 @Mixin(Inventory.class)
@@ -57,13 +50,9 @@ public abstract class InventoryMixin {
     @Final
     public NonNullList<ItemStack> items;
 
-    // 26.1: renamed from getSelected() to getSelectedItem() (confirmed via javap on the real
-    // merged jar). Also: Inventory#getDestroySpeed(BlockState) no longer exists at all — that
-    // logic moved to Player#getDestroySpeed(BlockState), and its bytecode calls
-    // this.inventory.getSelectedItem() directly. So once this override is retargeted, the
-    // satchel's selected item is picked up automatically by Player's destroy-speed calc — the
-    // old separate satchels$getDestroySpeed mixin (targeting a method that no longer exists) is
-    // gone; it's not needed anymore, not just moved.
+    // Player#getDestroySpeed(BlockState) calls this.inventory.getSelectedItem() directly, so
+    // the satchel's selected item is picked up automatically by the destroy-speed calc too —
+    // no separate hook needed there.
     @ModifyReturnValue(method = "getSelectedItem", at = @At("RETURN"))
     public ItemStack satchels$getSelected(ItemStack original) {
         SatchelData satchelData = SatchelData.get(player);
@@ -97,17 +86,9 @@ public abstract class InventoryMixin {
         }
     }
 
-    // 26.1: clearOrCountMatchingItems's signature and internals changed completely (confirmed
-    // via javap -c) — it's now (Predicate, int, Container), and internally does exactly 3 calls:
-    // ContainerHelper.clearOrCountMatchingItems(this, ...), then (container param, ...), then
-    // the ItemStack overload on the menu's carried/cursor stack. The old @WrapOperation targeted
-    // the *second* occurrence of the Container-overload call by ordinal, which in 1.21.1 was
-    // some "extra compartment" pass; in the new bytecode ordinal=1 lands on the caller-supplied
-    // Container param instead (e.g. the crafting grid, for the /clear command's craft-slots
-    // arg) — not satchel-relevant at all, so wrapping that specific call is the wrong target now.
-    // Switched to injecting at RETURN and adding the satchel's extra clearing on top of whatever
-    // the vanilla method already cleared — same net effect, but doesn't depend on the internal
-    // call structure staying stable.
+    // Injects at RETURN and adds the satchel's own clearing on top of whatever vanilla already
+    // cleared, rather than wrapping one of clearOrCountMatchingItems' internal calls by ordinal
+    // — more resilient to that method's internal call structure changing.
     @Inject(method = "clearOrCountMatchingItems", at = @At("RETURN"), cancellable = true)
     public void satchels$clearOrCountMatchingItems(Predicate<ItemStack> predicate, int i, Container container, CallbackInfoReturnable<Integer> cir) {
         int cleared = cir.getReturnValue();

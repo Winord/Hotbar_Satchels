@@ -39,7 +39,7 @@ public class SatchelsEventHooks {
     }
 
     private static void playerClone(ServerPlayer oldPlayer, ServerPlayer newPlayer, boolean alive) {
-        // 26.1: GameRules.getBoolean(GameRule<Boolean>) removed — confirmed via javap against the
+        // GameRules.getBoolean(GameRule<Boolean>) removed
         // real jar. The instance returned by getGameRules() now exposes a generic <T> T get(GameRule<T>).
         if (oldPlayer.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
                 && serverLevel.getGameRules().get(GameRules.KEEP_INVENTORY)) {

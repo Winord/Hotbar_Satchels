@@ -56,7 +56,7 @@ public class SatchelInventorySlot extends Slot {
      * screen, slots 3–5 are still present as {@code Slot} objects but should act as if they
      * don't exist. This is always safe to check freshly (no snapshot to go stale) since
      * satchel tier changes are only ever allowed while the satchel is empty (see
-     * {@code AccessoriesCompat#canUnequipSatchel}) — there's never real content sitting past
+     * {@code TrinketsCompat#canUnequipSatchel}) — there's never real content sitting past
      * the live boundary for this to hide.
      */
     private boolean isWithinCurrentTier() {

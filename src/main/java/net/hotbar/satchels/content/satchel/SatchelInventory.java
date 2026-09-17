@@ -55,9 +55,8 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
 
     /**
      * Resizes the backing list to {@code newSize} — used when the equipped satchel's tier
-     * changes. Always safe to call: replacing a satchel with a different-tier one is only
-     * possible while the old one is empty (see {@code AccessoriesCompat#canUnequipSatchel}), so
-     * this never has contents to preserve or drop.
+     * changes. Always safe to call: a tier swap is only possible while the old satchel is
+     * empty, so this never has contents to preserve or drop.
      */
     public void resizeTo(int newSize) {
         if (newSize == this.items.size()) return;
@@ -69,16 +68,10 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
     public int getContainerSize() { return items.size(); }
 
     /**
-     * Guards every index-based {@link Container} accessor below against a stale {@link Slot}
-     * from a menu that was open when {@link #resizeTo(int)} shrank {@link #items} out from
-     * under it: {@code MenuWithSatchel.addInventorySlots} snapshots {@code getContainerSize()}
-     * once when a menu opens, and if the player then equips a smaller-tier satchel in that same
-     * still-open menu, the already-added slots for now-out-of-range indices aren't removed (no
-     * live menu-slot-list rebuild exists). Both the client render loop and
-     * {@code AbstractContainerMenu#broadcastChanges} then call {@code getItem} on those stale
-     * slots regardless of {@code isActive()}, which used to throw
-     * {@link IndexOutOfBoundsException}. Treating an out-of-range index as "nothing there"
-     * makes the phantom slot inert instead of crashing; it disappears once the menu is reopened.
+     * Guards every index-based {@link Container} accessor against a stale {@link Slot} left
+     * over from a menu that was open when {@link #resizeTo(int)} shrank {@link #items}: an
+     * out-of-range index is treated as "nothing there" instead of throwing
+     * {@link IndexOutOfBoundsException}, making the phantom slot inert until the menu reopens.
      */
     private boolean isValidSlot(int slot) {
         return slot >= 0 && slot < items.size();
@@ -123,10 +116,8 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
     @Override
     public void setChanged() {
         this.parent.getPlayer().getInventory().setChanged();
-        // Fire the "satchel_full" advancement criterion when every slot of a Netherite
-        // Satchel holds a full stack (count >= maxStackSize). Non-stackable items (tools,
-        // weapons, etc.) have maxStackSize == 1, so a slot with exactly 1 of them counts
-        // as full. Only fires server-side.
+        // Fires "satchel_full" when every slot of a Netherite Satchel holds a full stack
+        // (server-side only). Non-stackable items (maxStackSize == 1) count as full at 1.
         Player player = this.parent.getPlayer();
         SatchelTier tier = this.parent.getCurrentTier();
         if (tier == SatchelTier.NETHERITE
@@ -139,18 +130,13 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
 
     @Override
     public boolean stillValid(@NotNull Player player) {
-        // 26.1: isWithinEntityInteractionRange(Entity) removed; now requires an explicit distance.
-        // entityInteractionRange() is the vanilla replacement for the old fixed 4.0F check.
         return player.isWithinEntityInteractionRange(this.parent.getPlayer(), player.entityInteractionRange());
     }
 
     /**
-     * No satchel may ever hold another satchel — this is the single point of truth for that
-     * rule, so every insertion path (GUI clicks, shift-click, the number-key hotbar swap in
-     * {@code AbstractContainerMenuMixin}, hoppers/droppers via the plain {@link Container}
-     * contract) is covered without each one needing its own tag check. Without this, the
-     * number-key swap could move an equipped/held satchel into one of its own storage slots
-     * (no {@code Accessories} needed to hit it), closing the screen on itself.
+     * No satchel may ever hold another satchel — the single point of truth for that rule,
+     * covering every insertion path (GUI clicks, shift-click, hotbar-key swap, hoppers) without
+     * each needing its own tag check.
      */
     @Override
     public boolean canPlaceItem(int slot, @NotNull ItemStack stack) {
@@ -168,22 +154,12 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
     }
 
     /**
-     * Bugfix (satchel-in-satchel via ground pickup): a satchel item must never end up back in
-     * *any* satchel's storage — including its own or a different one currently active on the
-     * hotbar — even though {@link #canPlaceItem} (the single point of truth for that rule
-     * everywhere else — GUI clicks, shift-click, the number-key hotbar swap) never actually gets
-     * consulted here. This method writes straight into {@link #items} via
-     * {@link #addToInventory}/{@link #addAt}, bypassing the {@code Slot#mayPlace} machinery that
-     * every other insertion path goes through, so without this guard a satchel lying on the
-     * ground could be walked over while another satchel's storage is showing on the hotbar
-     * ({@code V}) and get pulled straight into it. Returning {@code false} unconditionally for a
-     * satchel stack sends both callers ({@code ItemEntityMixin}'s ground pickup and
-     * {@code GiveCommandMixin}'s {@code /give}) back to the plain
-     * {@code Inventory#add(ItemStack)} fallback — the ordinary Survival inventory — with no
-     * satchel-storage attempt at all. That also covers the case where the Survival inventory is
-     * full but the satchel still has a free slot: previously {@code pickup()} would fill that
-     * free slot regardless, now it simply refuses and the item stays on the ground like it would
-     * for any other item whose owning container is full.
+     * A satchel item must never end up inside any satchel's storage (including its own),
+     * even though {@link #canPlaceItem} isn't consulted on this path: this writes straight
+     * into {@link #items}, bypassing the {@code Slot#mayPlace} machinery every other insertion
+     * path goes through. Without this guard, walking over a dropped satchel while another is
+     * active on the hotbar would pull it straight into storage. Returning {@code false} here
+     * sends the caller back to the plain {@code Inventory#add(ItemStack)} fallback.
      */
     public boolean pickup(ItemStack stack) {
         if (stack.is(ModTags.SATCHEL)) return false;
@@ -308,11 +284,9 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
     }
 
     /**
-     * 26.1: mirrors {@code Inventory#findSlotMatchingCraftingIngredient(Holder<Item>, ItemStack)}
-     * (confirmed via decompile) — the recipe-book auto-craft pipeline (see
-     * {@code ServerPlaceRecipe#moveItemToGrid}) now matches by {@code Holder<Item>} rather than a
-     * concrete {@code ItemStack}, since it only knows which ingredient index matched, not which
-     * exact stack. Same "usable for crafting" criteria as {@link #findSlotMatchingUnusedItem}.
+     * Mirrors {@code Inventory#findSlotMatchingCraftingIngredient(Holder<Item>, ItemStack)} —
+     * the recipe-book auto-craft pipeline matches by {@code Holder<Item>} rather than a
+     * concrete stack. Same "usable for crafting" criteria as {@link #findSlotMatchingUnusedItem}.
      */
     public int findSlotMatchingCraftingIngredient(net.minecraft.core.Holder<net.minecraft.world.item.Item> item, ItemStack existingItem) {
         for (int i = 0; i < this.items.size(); i++) {
@@ -355,11 +329,7 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
         for (int i = 0; i < this.items.size(); i++) {
             ItemStack slotContent = this.items.get(i);
             if (!slotContent.isEmpty()) {
-                // Lambdas can only capture effectively-final locals; `i` is mutated by the loop.
-                final int slot = i;
-                // 26.1: ItemStack.save(Provider, CompoundTag) removed. ItemStack.CODEC is already
-                // Codec<ItemStack> (no .codec()). net.minecraft.Util moved to net.minecraft.util.Util
-                // and logAndPause was renamed to logAndPauseIfInIde (both confirmed via javap).
+                final int slot = i; // effectively-final capture for the lambda below
                 ItemStack.CODEC
                     .encodeStart(provider.createSerializationContext(nbtOps), slotContent)
                     .resultOrPartial(e -> net.minecraft.util.Util.logAndPauseIfInIde("SatchelInventory save: " + e))
@@ -384,17 +354,12 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
 
     @Override
     public void deserializeNBT(@NotNull HolderLookup.Provider provider, @NotNull CompoundTag tag) {
-        // Group A fix: javac's own error gave `required: String` for getList, i.e. the
-        // TAG_COMPOUND filter argument is gone — extrapolated (not directly confirmed) that it
-        // now returns Optional<ListTag> like every other getter in this same refactor wave.
-        // Re-check against the real CompoundTag class if this specific line still fails.
         ListTag tagList = tag.getList(KEY_ITEMS).orElseGet(ListTag::new);
 
         for (int i = 0; i < tagList.size(); i++) {
             CompoundTag itemTags = tagList.getCompound(i).orElseGet(CompoundTag::new);
             int slot = itemTags.getInt(KEY_SLOT).orElse(-1);
             if (slot >= 0 && slot < this.items.size()) {
-                // 26.1: ItemStack.parse(Provider, Tag) removed. Decode via ItemStack.CODEC directly.
                 ItemStack.CODEC
                     .parse(provider.createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE), itemTags)
                     .resultOrPartial(e -> {})
@@ -429,8 +394,6 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
     // endregion
 
     // region StackedContentsCompatible
-    // 26.1: StackedContentsCompatible interface now requires fillStackedContents(StackedItemContents).
-    // StackedItemContents.accountSimpleStack(ItemStack) confirmed present in 26.1.2 jar.
     @Override
     public void fillStackedContents(@NotNull StackedItemContents contents) {
         for (ItemStack itemstack : this.items) {

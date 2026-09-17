@@ -50,19 +50,6 @@ public abstract class PlayerMixin extends LivingEntity implements IHaveSatchelDa
         return satchels$satchelData;
     }
 
-    // 26.1: Entity#addAdditionalSaveData/readAdditionalSaveData no longer take a raw CompoundTag —
-    // the actual descriptor the mixin engine reported at runtime is
-    // (Lnet/minecraft/world/level/storage/ValueOutput;...)V / (...ValueInput;...)V. That part is
-    // a hard fact straight from the loaded class, not a guess.
-    //
-    // What IS a hypothesis (not decompiled in this session — flagging per the port protocol):
-    // ValueOutput#store(String, Codec<T>, T) / ValueInput#read(String, Codec<T>) returning
-    // Optional<T>. This mirrors the real vanilla "ValueInput/ValueOutput" NBT-agnostic save
-    // refactor and lets us keep bridging through CompoundTag (CompoundTag.CODEC is already used
-    // elsewhere in SatchelData, e.g. its own equipped-stack serialization) rather than rewriting
-    // SatchelData's whole (de)serializeNBT contract around these interfaces directly. If this
-    // doesn't compile, the compiler error will show ValueOutput/ValueInput's *actual* member
-    // names — send that back rather than let me guess again.
     @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
     public void satchels$addAdditionalData(net.minecraft.world.level.storage.ValueOutput output, CallbackInfo ci) {
         CompoundTag tag = satchels$satchelData.serializeNBT(this.registryAccess());
@@ -75,39 +62,20 @@ public abstract class PlayerMixin extends LivingEntity implements IHaveSatchelDa
         satchels$satchelData.deserializeNBT(this.registryAccess(), tag);
     }
 
-    // Satchel Inventory Hooks — see LivingEntityMixin#satchels$setSatchelSlotIfNeeded: setItemSlot
-    // moved to LivingEntity in 26.1 (Player no longer overrides it), and its whole body changed
-    // shape, so the injection moved there too. Kept the doc note here since this is the first
-    // place someone reading PlayerMixin would look for it.
+    // Equipment-slot write redirect lives in LivingEntityMixin#satchels$setSatchelSlotIfNeeded —
+    // setItemSlot is declared there, not on Player, as of 26.1.
 
-    // 26.1: dropEquipment gained a ServerLevel parameter (confirmed via javap — it's now
-    // dropEquipment(ServerLevel), not a bare no-arg method). @Inject requires the handler's own
-    // parameters (before CallbackInfo) to match the target's exactly, so the old zero-arg handler
-    // is a signature mismatch that would fail to apply at class-load time — same failure mode as
-    // the two originally-reported crashes, just not reached yet. Fixed by adding the ServerLevel
-    // param and using it directly instead of the old this.level() instanceof pattern match.
     @Inject(method = "dropEquipment", at = @At("TAIL"))
     public void satchels$dropSatchelEquipment(net.minecraft.server.level.ServerLevel serverLevel, CallbackInfo ci) {
         SatchelData satchelData = SatchelData.get((Player) (Object) this);
-        if (
-                // 26.1: GameRules.getBoolean(GameRule<Boolean>) removed; confirmed via javap the
-                // instance now exposes a generic <T> T get(GameRule<T>) instead.
-                !serverLevel.getGameRules().get(GameRules.KEEP_INVENTORY)) {
-            // Always drop the satchel's stored contents ourselves — nothing else knows
-            // about them, regardless of which compat currently manages the equipped slot.
+        if (!serverLevel.getGameRules().get(GameRules.KEEP_INVENTORY)) {
+            // Always drop the satchel's stored contents ourselves — nothing else knows about them.
             satchelData.getSatchelInventory().dropAll(true);
 
-            // The equipped-satchel *bag item* itself is a different story. Under a compat
-            // module like TrinketsCompat (archived on 26.1.x) or OhmegaCompat (once its equip
-            // path is implemented — see docs/accessory-compat-roadmap.md), satchelData
-            // .satchelSlotStack is only a mirror of what's actually equipped — the real stack
-            // lives in that mod's own attachment/inventory, which drops its own equipped items
-            // on death itself. Dropping the mirrored copy here too would duplicate the bag.
-            // Only VanillaCompat has no other system backing the equipped slot
-            // (SatchelEquipmentSlot has no backing Container — SatchelData is the sole source
-            // of truth there), so only that path needs us to drop it manually. Check
-            // VANILLA.isLoaded() directly (not "is some other compat NOT loaded") so this stays
-            // correct regardless of which other compat ends up active.
+            // The equipped bag item itself is different: under a slot-compat module (Ohmega,
+            // Trinkets), satchelSlotStack is only a mirror — the real stack lives in that mod's
+            // own inventory, which drops its own equipped items on death. Only VanillaCompat has
+            // no backing system of its own, so only that path needs a manual drop here.
             if (SatchelsCompat.VANILLA.isLoaded()) {
                 ItemStack slotStack = satchelData.getSatchelSlotStack();
                 if (!slotStack.isEmpty()) satchelData.getPlayer().drop(slotStack, true, false);

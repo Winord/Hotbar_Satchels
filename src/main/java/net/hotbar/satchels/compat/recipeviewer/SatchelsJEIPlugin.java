@@ -46,8 +46,7 @@ public class SatchelsJEIPlugin implements IModPlugin {
      * that isn't a plain {@code ShapedRecipe}/{@code ShapelessRecipe}), even though the vanilla
      * recipe book shows it fine.
      * <p>
-     * {@code addExtension} takes a singleton instance directly (confirmed against the real 26.1
-     * source), not a per-recipe factory function — extensions receive the recipe as a parameter
+     * {@code addExtension} takes a singleton instance directly, not a per-recipe factory function — extensions receive the recipe as a parameter
      * on each of their own methods instead.
      */
     @Override

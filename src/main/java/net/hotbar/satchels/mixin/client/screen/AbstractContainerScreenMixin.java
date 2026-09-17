@@ -36,8 +36,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * hotbar-swap-on-shift-click, and satchel-equipment-slot visibility handling.
  * <p>
  * This single generic mixin covers every {@code allowed_menus} screen, including
- * {@code InventoryMenu} — the old separate {@code InventoryScreenMixin} was removed when
- * satchel rendering was generalized beyond the survival inventory (§11.1).
+ * {@code InventoryMenu} and {@code AbstractMountInventoryScreen} (horse, nautilus, ...) — see
+ * {@code satchels$renderSatchelInventory}'s javadoc for why the latter doesn't need (and
+ * previously wrongly had) a separate mixin of its own.
  */
 @Mixin(AbstractContainerScreen.class)
 public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMenu> extends Screen {
@@ -67,31 +68,9 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     @Shadow
     public abstract T getMenu();
 
-    // 26.1: renamed from findSlot(double,double) to getHoveredSlot(double,double) — confirmed via
-    // javap on the real merged jar (identical descriptor (DD)Lnet/minecraft/world/inventory/Slot;
-    // and identical body: iterate menu.slots, check isActive() then isHovering(), return first
-    // match). Also narrowed from protected abstract to private on the real class; @Shadow doesn't
-    // need to match that exactly to locate the method.
     @Shadow
     protected abstract Slot getHoveredSlot(double pMouseX, double pMouseY);
-
-    /**
-     * Prevents throwing an item when clicking on a visible {@code SatchelEquipmentSlot}:
-     * that slot is outside the pixel bounds {@code ScreenWithSatchel.hasClickedOutside}
-     * treats as "inside the window" (it only widens that zone for the satchel inventory row).
-     */
-    // 26.1: hasClickedOutside dropped its imageWidth/imageHeight params — it now reads
-    // this.imageWidth/this.imageHeight directly (confirmed via javap -c: the descriptor is
-    // (DDII)Z, and mouseClicked/mouseReleased now call it with just (mouseX, mouseY, leftPos,
-    // topPos)). Descriptor-only fix, method's own semantics unchanged.
-    //
-    // 26.1: mouseClicked/mouseReleased no longer take raw (double,double,int) mouse params —
-    // they take a MouseButtonEvent record (with x()/y()/button() accessors) instead. Confirmed
-    // via javap that the two target methods now have genuinely different arities:
-    // mouseClicked(MouseButtonEvent, boolean) vs mouseReleased(MouseButtonEvent) — no second
-    // boolean. A single @ModifyExpressionValue handler can't cover both anymore (Mixin infers
-    // the expected handler signature from each target's own captured locals), so this is split
-    // into one handler per target, both delegating to the same private helper.
+    
     @ModifyExpressionValue(method = "mouseClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;hasClickedOutside(DDII)Z"))
     public boolean satchels$hasClickedOutsideOnClick(boolean original, MouseButtonEvent event, boolean bl) {
         return satchels$hasClickedOutside(original, event);
@@ -112,6 +91,9 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         if (hovered instanceof SatchelEquipmentSlot satchelSlot && satchelSlot.isShown(Minecraft.getInstance().player, this.getMenu())) {
             return false;
         }
+        if (hovered instanceof SatchelInventorySlot) {
+            return false;
+        }
 
         Identifier location = SatchelMenuLocation.resolve(menu);
 
@@ -126,19 +108,26 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * with it. For {@code InventoryMenu} also renders the equipment-slot indicator and slides
      * the {@code SatchelEquipmentSlot} icon with the sprite.
      * <p>
-     * 26.1: {@code renderBackground}/{@code renderBg}/{@code render} don't exist anymore — the
-     * whole render pipeline was split into an "extract render state" pass (confirmed by tracing
-     * the real bytecode end to end). The new top-level order per frame is
-     * {@code Screen#extractRenderStateWithTooltipAndSubtitles} → {@code extractBackground(...)}
-     * (overridden per screen subclass — e.g. {@code ContainerScreen}/{@code CraftingScreen} blit
-     * their own GUI panel texture there, confirmed via javap -c on both) → then
-     * {@code extractRenderState(...)} → (for container screens) {@code extractContents(...)},
-     * which is declared once in {@code AbstractContainerScreen} and NOT overridden per screen —
-     * confirmed by checking every subclass in the hierarchy. So injecting at {@code HEAD} of
-     * {@code extractContents} fires after the panel background is already drawn (since
-     * {@code extractBackground} always runs first) and before slots/labels are drawn — the exact
-     * same timing this mixin had before, just via a different hook, and still generic across
-     * every {@code allowed_menus} screen.
+     * Injected at {@code HEAD} of {@code extractContents}: fires after the panel background is
+     * drawn (since {@code extractBackground} always runs first) and before slots/labels — same
+     * timing as the old {@code renderBg}, generic across every {@code allowed_menus} screen.
+     * <p>
+     * Also covers {@code AbstractMountInventoryScreen} (horse, nautilus, ...): that class
+     * overrides {@code extractBackground} (for its own panel texture/entity preview) and
+     * {@code extractRenderState} (to stash {@code xMouse}/{@code yMouse}), but does <i>not</i>
+     * override {@code extractContents} itself — {@code extractRenderState}'s {@code
+     * super.extractRenderState(...)} call still resolves to {@code
+     * AbstractContainerScreen#extractRenderState}, which calls {@code this.extractContents(...)}
+     * and, via ordinary virtual dispatch, lands right back on this same injected method. An
+     * earlier version of this hook bailed out for {@code AbstractMountInventoryScreen} on the
+     * assumption that it wouldn't fire there, and gave mount screens their own separate
+     * {@code extractBackground}-based renderer instead (formerly {@code
+     * HorseInventoryScreenMixin}) — which put the satchel row in the wrong render phase (grouped
+     * with the opaque panel/background draws rather than the content draws) and, being a second
+     * independent hook, needed its own separate {@code ScreenWithSatchel} instance, which then
+     * desynced from this class's interaction-gating logic (see the git history for that whole
+     * saga). Letting this one hook run unconditionally for every {@code allowed_menus} screen,
+     * mount screens included, avoids all of that.
      */
     @Inject(method = "extractContents", at = @At("HEAD"))
     public void satchels$renderSatchelInventory(GuiGraphicsExtractor guiGraphics, int p_283661_, int p_281248_, float p_281886_, CallbackInfo ci) {
@@ -147,16 +136,10 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         if (location == null) return;
         if (!SatchelsCommonConfig.isAllowed(location)) return;
 
-        // 26.1: unlike satchels$clipSatchelSlotStart (which clips extractSlot's item icons and
-        // runs *inside* extractContents' own pushMatrix/translate), this HEAD injection runs
-        // *before* that translate — so leftPos/topPos still need to be added manually here, the
-        // pose is genuinely untransformed at this point. These two background-sprite draws had
-        // no scissor clip at all before: in 1.21.1 they relied on draw order/z-layering alone to
-        // end up hidden behind the main panel, but 26.1's deferred "extract now, batch-render
-        // later" pipeline (confirmed via decompile — every draw call just queues a render-state
-        // object, it doesn't paint immediately) doesn't guarantee that submission order alone
-        // keeps them visually under the panel. Clipping them the same way the item icons are
-        // clipped removes that reliance on draw order entirely.
+        // This HEAD injection runs before extractContents' own pushMatrix/translate, so
+        // leftPos/topPos are added manually. Scissored (rather than relying on draw order)
+        // since the deferred render pipeline doesn't guarantee submission order keeps these
+        // visually under the panel.
         int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
         int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
 
@@ -173,46 +156,19 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
         Tuple<Integer, Integer> offset = SatchelsCommonConfig.getOverlayOffset(location);
         boolean forceHidden = SatchelsClientConfig.isSatchelHiddenInInventory();
-        // BUGFIX: the scissor boundary must move together with the panel's actual bottom edge.
-        // renderSatchelInventory is drawn at (topPos + offset.getB()), but this clip used to be
-        // pinned to the un-offset (topPos + imageHeight) — so any non-zero overlayYOffset (e.g.
-        // the "0 -1" every generic_9xN/shulker_box default ships with) shifted the row's render
-        // position without moving the clip line, silently cropping exactly |offset.getB()| px off
-        // the row every time. Adding offset.getB() here keeps the clip flush with the panel edge
-        // the row is actually drawn against, whatever that offset is.
-        //
-        // BUGFIX (corner pixel), take 3 — two scissors, both permanently active: row 0 of every
-        // satchel_inventory_<tier>.png is fully transparent except for a single opaque pixel in
-        // each top corner (confirmed in the PNGs themselves: e.g. satchel_inventory_golden.png is
-        // transparent across row 0 except x=0 and x=63) — a deliberate 1px "tuck" meant to complete
-        // the main panel's bottom-left border corner. Take 1 shifted this boundary up by 1px to let
-        // that row through, which shifts the visibility threshold for *every* row of the sprite by
-        // the same 1px throughout the whole retract/expand tween (row r is visible when
-        // r >= satchelYOffset, versus r >= satchelYOffset + 1 before) — so a full extra row of the
-        // sprite's real body peeked out above the panel on every frame of the animation. Take 2
-        // kept this boundary as-is and drew the corner in a separate pass that only fired at full
-        // rest (satchelYOffset == 0), with a short alpha fade — but a pass that switches on and off
-        // is exactly what produces the flash on open/toggle, and the fade only smeared it.
-        //
-        // Now: this boundary stays exactly where it was (the tween is clipped precisely as before,
-        // no leak), and the corner is drawn by a second, permanently-active scissor pass below —
-        // one clip per frame each, in sequence, no gating. See renderSatchelInventoryCorners.
+        // Clip boundary must track the panel's actual bottom edge (topPos + offset.getB()),
+        // not the un-offset imageHeight — otherwise a nonzero overlayYOffset (e.g. shulker_box's
+        // default "0 -1") crops the row by that many pixels. The row's corner pixel (see
+        // ModSprites/ScreenWithSatchel javadoc) needs a second, separate scissor pass below —
+        // it sits 1px above this clip line and this boundary must not move to accommodate it.
         guiGraphics.enableScissor(0, this.topPos + this.imageHeight + offset.getB(), screenWidth, screenHeight);
         satchels$screenWithSatchel.renderSatchelInventory(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight, forceHidden);
         guiGraphics.disableScissor();
 
-        // Second scissor pass for the corner pixel: a 1px-wide vertical clip at the row's left
-        // edge whose top is 1px above the boundary used just above — i.e. the one cell the pass
-        // above structurally cannot reach. Not gated on the retract/expand tween — it runs every
-        // frame the row renders and blits the sprite at the same animated offset the main pass
-        // does, so there is no tween-visibility state to toggle and therefore nothing to flash
-        // there. It IS gated on the row's hotbar slot-start position, per tier — see
-        // ScreenWithSatchel#renderSatchelInventoryCorners's javadoc for why a shifted row's
-        // corner pixel stops landing on the panel's own notch past a certain offset and would
-        // otherwise bleed onto the Survival GUI's hotbar border instead. Called after the main
-        // scissor is already disabled rather than nested inside it: GuiGraphics' scissor stack
-        // only ever *intersects* with whatever is already active, so a nested rect could never
-        // expose a pixel above the outer rect's own boundary.
+        // Second, always-on scissor pass for the row's corner "tuck" pixel — see
+        // ScreenWithSatchel#renderSatchelInventoryCorners's javadoc. Called after the main
+        // scissor is disabled, not nested: GuiGraphics' scissor stack only intersects with
+        // whatever is already active, so a nested rect could never expose a pixel above it.
         satchels$screenWithSatchel.renderSatchelInventoryCorners(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight);
 
         int rowOffset = (int) satchels$screenWithSatchel.getInventoryYOffset();
@@ -228,10 +184,6 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         return original.call(slot);
     }
 
-    // 26.1: no more `render` method on this class. The icon-rendering isActive() gate this used
-    // to wrap now lives in `extractSlots` (confirmed via javap -c: extractSlots iterates
-    // menu.slots and gates each extractSlot(...) call behind the exact same Slot.isActive()
-    // check that `render` used to gate renderSlot(...) with).
     @WrapOperation(method = "extractSlots", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/inventory/Slot;isActive()Z"))
     public boolean satchels$changeIsActiveInRender(Slot slot, Operation<Boolean> original) {
         if (slot instanceof SatchelEquipmentSlot satchelSlot) return satchelSlot.isShown(Minecraft.getInstance().player, this.getMenu());
@@ -256,10 +208,6 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * tween. Checks the animated offset rather than the raw hide flag so the tooltip can't
      * appear before the row has fully slid back into place, and vanishes the moment the hide
      * toggle flips (before the slide even starts).
-     * <p>
-     * Icon rendering ({@code isActive()} above) is intentionally left on the animated check —
-     * only hover/tooltip need to vanish early; the icon should visibly slide out from under
-     * the mouse rather than popping away.
      */
     @Inject(method = "isHovering(Lnet/minecraft/world/inventory/Slot;DD)Z", at = @At("RETURN"), cancellable = true)
     public void satchels$suppressHoverWhenHidden(Slot slot, double mouseX, double mouseY, CallbackInfoReturnable<Boolean> cir) {
@@ -290,9 +238,6 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * The hotbar-key swap path calls {@code slotClicked} directly with {@code ContainerInput.SWAP},
      * bypassing {@code getHoveredSlot} entirely — the target satchel slot is encoded in
      * {@code pMouseButton}, so it's resolved separately here.
-     * <p>
-     * Client-only, unsynced — consistent with the hide toggle never touching
-     * {@code SatchelData#isActive()}.
      */
     @Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)
     public void satchels$blockHiddenSatchelSlotClicks(Slot pSlot, int pSlotId, int pMouseButton, ContainerInput pType, CallbackInfo ci) {
@@ -313,20 +258,11 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     public void satchels$swapWithSatchelSlot(AbstractContainerScreen<?> instance, Slot slot, int index, int i, ContainerInput type, Operation<Void> original) {
         Player player = Minecraft.getInstance().player;
         SatchelData data = SatchelData.get(player);
-        // Without this guard, vanilla's ContainerInput.SWAP branch calls Slot#remove on the source
-        // before SatchelInventory#canPlaceItem ever runs — the stack is pulled out with nowhere
-        // to go and silently deleted. This covers both a worn satchel being swapped into its
-        // own storage and a different satchel from the inventory being swapped into the
-        // equipped one's storage.
+        // Without this guard, vanilla's SWAP branch removes the source slot before
+        // SatchelInventory#canPlaceItem runs — the stack would be pulled out with nowhere to
+        // go and silently deleted.
         if (
                 SatchelsClientConfig.shouldSwapWithShiftKey() &&
-                        // 26.1: Screen.hasShiftDown() (the old static live-state poll) is gone —
-                        // confirmed via bytecode search across the whole jar: the only remaining
-                        // hasShiftDown() is an instance default method on KeyEvent (via
-                        // InputWithModifiers), tied to a specific key event, not a live query.
-                        // Minecraft itself now exposes the live-state instance method that this
-                        // code actually wants (decompiled: polls InputConstants.isKeyDown for both
-                        // shift keys, same semantics as the old static helper).
                         data.canAccess() && data.isSlotInSatchel(i) && net.minecraft.client.Minecraft.getInstance().hasShiftDown() &&
                         !slot.getItem().is(ModTags.SATCHEL)
         ) {
@@ -351,31 +287,17 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
     /**
      * Scissors {@code SatchelInventorySlot} item icons to the region below the panel's
-     * bottom edge ({@code topPos + imageHeight}), making them slide visually under the panel
-     * during the retract tween instead of floating on top of it.
+     * bottom edge, making them slide visually under the panel during the retract tween
+     * instead of floating on top of it. {@code SatchelEquipmentSlot} is scissored to the
+     * region right of the panel's right edge, hiding the icon while it slides in during equip.
      * <p>
-     * {@code SatchelEquipmentSlot} is scissored to the region right of the panel's right
-     * edge ({@code leftPos + imageWidth}), hiding the icon while it slides in during equip.
-     * <p>
-     * The guard skips inactive slots (e.g. slots beyond the equipped tier's real slot count,
-     * which always exist up to {@code SatchelTier#MAX_SLOT_COUNT}) — nothing gets drawn for
-     * an inactive slot, so applying the scissor pair would be wasted GPU state churn.
-     * <p>
-     * The RETURN inject (not TAIL) ensures every exit path through {@code extractSlot} gets a
-     * matching disable — vanilla has an early guard near the top in addition to the natural
-     * return, so TAIL would leave the scissor enabled when that guard fires.
+     * Inactive slots (beyond the equipped tier's real slot count) are skipped entirely.
      */
     @Unique
     private static boolean satchels$needsScissor(Slot slot) {
         return (slot instanceof SatchelInventorySlot || slot instanceof SatchelEquipmentSlot) && slot.isActive();
     }
 
-    // 26.1: renderSlot(GuiGraphics, Slot) was renamed and gained two params — it's now
-    // extractSlot(GuiGraphicsExtractor, Slot, int mouseX, int mouseY) (confirmed via javap -c;
-    // the two extra ints are just threaded through from extractSlots, unused by this mixin).
-    // Still has an early `return` guard partway through in addition to the natural end
-    // (confirmed via javap -c), so @At("RETURN") (which injects at every return point) is still
-    // the right choice over TAIL — same reasoning as before, just re-verified against the new body.
     @Inject(method = "extractSlot", at = @At("HEAD"))
     public void satchels$clipSatchelSlotStart(GuiGraphicsExtractor guiGraphics, Slot slot, int mouseX, int mouseY, CallbackInfo ci) {
         if (!satchels$needsScissor(slot)) return;
@@ -385,32 +307,14 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
         int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
 
-        // 26.1: enableScissor(x0,y0,x1,y1) now runs the rect through
-        // ScreenRectangle#transformAxisAligned(this.pose) before pushing it (confirmed via
-        // decompile) — i.e. it's transformed by whatever pose translation is currently active,
-        // not raw absolute screen pixels like before. extractSlot runs *inside*
-        // extractContents' own pushMatrix()/translate(leftPos, topPos) block (confirmed via
-        // decompile), so that translation is already applied here — adding leftPos/topPos
-        // again double-translates the rect, landing the clip region nowhere near the actual
-        // panel edge. That's what broke both the equipment-slot icon (clipped away entirely)
-        // and the retract animation (nothing left to clip it against the real panel edge).
+        // extractSlot runs inside extractContents' own pushMatrix()/translate(leftPos, topPos)
+        // block, so that translation is already applied here — do not add leftPos/topPos again.
         if (slot instanceof SatchelEquipmentSlot) {
             int scissorRightEdge = this.imageWidth;
             guiGraphics.enableScissor(scissorRightEdge, 0, screenWidth, screenHeight);
         } else {
-            // BUGFIX (same root cause as satchels$renderSatchelInventory's clip, see its
-            // comment): item icons are slid to topPos + overlayYOffset by
-            // SatchelInventorySlot#updateY, but this clip boundary was pinned to the raw
-            // this.imageHeight — un-offset — so a nonzero overlayYOffset (e.g. shulker_box's
-            // default "0 -1") clipped exactly that many pixels off the icon row's bottom edge,
-            // independently of (and in addition to) the identical bug in the background-bar
-            // clip above. Both must move together with the same offset.
-            //
-            // Deliberately NOT given the same corner-pixel treatment as the background-bar clip
-            // (see that comment): a uniform 1px shift here would leak an extra row of real item
-            // icon content during the tween, the exact same way it did for the background sprite.
-            // Item icons don't have anything analogous to the sprite's corner pixels, so there's
-            // nothing to recover here in the first place.
+            // Must track overlayOffset the same way the background-bar clip above does, or a
+            // nonzero overlayYOffset clips real pixels off the icon row's bottom edge.
             Tuple<Integer, Integer> overlayOffset = SatchelsCommonConfig.getOverlayOffset(location);
             int scissorBottomEdge = this.imageHeight + overlayOffset.getB();
             guiGraphics.enableScissor(0, scissorBottomEdge, screenWidth, screenHeight);

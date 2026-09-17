@@ -11,6 +11,7 @@
     "ServerPlaceRecipeMixin",
     "ServerPlayerMixin",
     "menu.AbstractContainerMenuMixin",
+    "menu.AbstractMountInventoryMenuMixin",
     "menu.HorseInventoryMenuMixin",
     "menu.InventoryMenuMixin",
     "player.InventoryMixin",

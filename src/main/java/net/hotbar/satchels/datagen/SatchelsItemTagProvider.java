@@ -15,17 +15,12 @@ import org.jetbrains.annotations.NotNull;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Generates item tags for all three satchel tiers.
- * Replaces the NeoForge {@code ItemTagGen}; {@code curios:satchel} replaced by
- * {@code accessories:satchel} on the 1.21.1 branch, and by {@code trinkets:chest/satchel}
- * on 26.x (Trinkets Updated — see {@code satchels-port-decisions-26_1.md} §3, dev-brief §6).
- *
- * Cross-mod tags in another namespace ({@code trinkets:chest/satchel}) are fully
- * supported by {@link FabricTagsProvider} — standard cross-compat pattern. This is the
- * "slot tag" Trinkets reads from {@code data/trinkets/tags/items/chest/satchel.json}
- * (see https://github.com/emilyploszaj/trinkets/wiki/Trinkets-Data-Formats) to decide which
- * items are valid in the {@code chest/satchel} slot registered by
- * {@code data/trinkets/entities/player.json} / {@code data/trinkets/slots/chest/satchel.json}.
+ * Generates item tags for all three satchel tiers, including the {@code trinkets:chest/satchel}
+ * cross-mod "slot tag" that Trinkets Updated reads (via {@code data/trinkets/tags/items/chest/
+ * satchel.json}) to decide which items are valid in its {@code chest/satchel} slot. Kept
+ * populated even while Trinkets is archived (see {@code satchels-port-decisions-26_1.md}) so
+ * re-enabling it needs no datagen changes. {@link FabricTagsProvider} supports tags in another
+ * mod's namespace directly — standard cross-compat pattern, no extra setup needed.
  */
 public class SatchelsItemTagProvider extends FabricTagsProvider.ItemTagsProvider {
     private static final TagKey<Item> TRINKETS_CHEST_SATCHEL = TagKey.create(
@@ -38,10 +33,7 @@ public class SatchelsItemTagProvider extends FabricTagsProvider.ItemTagsProvider
 
     @Override
     protected void addTags(@NotNull HolderLookup.Provider provider) {
-        // 26.1: ItemTags.DYEABLE doesn't exist in vanilla anymore (confirmed via javap) —
-        // closest vanilla tag is CAULDRON_CAN_REMOVE_DYE. FabricTagsProvider's tag(...) helper
-        // was also renamed to builder(...) (confirmed against the real Fabric API 26.1.2 branch
-        // source) — same TagAppender<ResourceKey<Item>, Item> shape, just a different method name.
+        // ItemTags.DYEABLE doesn't exist; closest vanilla tag is CAULDRON_CAN_REMOVE_DYE.
         var dyeable = builder(ItemTags.CAULDRON_CAN_REMOVE_DYE);
         var satchels = builder(ModTags.SATCHEL);
         for (var satchel : ModItems.ALL_SATCHELS) {

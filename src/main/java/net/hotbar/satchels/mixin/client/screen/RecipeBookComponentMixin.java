@@ -15,8 +15,8 @@ public class RecipeBookComponentMixin {
     @Shadow
     protected Minecraft minecraft;
 
-    // 26.1: StackedContents was split into StackedItemContents (item-availability tracking,
-    // used here) — confirmed via javap that both the shadowed field's real type on
+    // StackedContents was split into StackedItemContents (item-availability tracking,
+    // used here)
     // RecipeBookComponent and RecipeBookMenu#fillCraftSlotsStackedContents's parameter type
     // are StackedItemContents now.
     @Shadow

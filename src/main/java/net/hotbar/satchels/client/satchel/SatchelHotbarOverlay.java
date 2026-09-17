@@ -94,17 +94,14 @@ public class SatchelHotbarOverlay {
         int green = ARGB.green(lastColor);
         int blue = ARGB.blue(lastColor);
         int alpha = ARGB.alpha(lastColor);
-        // 26.1: setColor() removed. Pass tint as ARGB int directly to blitSprite.
         int hotbarTint = ARGB.color(alpha, red, green, blue);
 
-        // 26.1: pose() returns Matrix3x2fStack (2D): pushPose→pushMatrix, translate loses Z.
         graphics.pose().pushMatrix();
         graphics.pose().translate(0f, (float) this.yOffset);
 
         int xOffset = satchelData.getHotbarOffset() * 20;
         // Drawn flush with the vanilla hotbar's left edge — each HOTBAR_SPRITES texture carries
         // its own 1px left border column, see ModSprites for why.
-        // 26.1: blitSprite requires RenderPipeline as first arg; tint as last int arg.
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, hotbarSprite.id(), x + xOffset, y, hotbarSprite.width(), hotbarSprite.height(), hotbarTint);
 
         int selected = player.getInventory().selected;
@@ -113,7 +110,6 @@ public class SatchelHotbarOverlay {
 
         float selectionYOffset = selectedInSatchel ? 0 : -this.yOffset;
 
-        // 26.1: pushPose→pushMatrix, translate loses Z.
         graphics.pose().pushMatrix();
         graphics.pose().translate(0f, selectionYOffset);
 
@@ -130,7 +126,6 @@ public class SatchelHotbarOverlay {
             selectionTint = ARGB.color(255, 255, 255, 255);
         }
 
-        // 26.1: blitSprite requires RenderPipeline as first arg; tint as last int arg.
         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, selectionSprite, x - 1 + (selected * 20), y - 1, 24, selectedInSatchel ? 24 : 23, selectionTint);
 
         graphics.pose().popMatrix();
@@ -139,14 +134,11 @@ public class SatchelHotbarOverlay {
         // frame is a hollow border, but count text for two-digit stacks overflows the 16x16
         // icon footprint into the frame's border area, and these are 2D GUI blits with no depth
         // testing — draw order alone decides which one wins.
-        // 26.1: setColor() removed — no tint needed for items (rendered at full white by default).
         for (int i = 0; i < satchelData.getSatchelInventory().getContainerSize(); i++) {
             ItemStack stack = satchelData.getSatchelInventory().getItem(i);
             SatchelRenderUtils.renderSlot(graphics, x + (i * 20) + 3 + xOffset, y + 3, deltaTracker, player, stack, i + 1);
         }
 
         graphics.pose().popMatrix();
-
-        // 26.1: flush() removed — rendering is deferred automatically.
     }
 }

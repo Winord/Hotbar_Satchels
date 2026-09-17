@@ -26,15 +26,11 @@ import org.jetbrains.annotations.NotNull;
 
 /**
  * Renders the equipped satchel on the player's back.
- *
- * <p><b>26.1 render architecture:</b> RenderLayer now operates on {@link EntityRenderState}
- * snapshots rather than live Entity references. The abstract method is {@code submit()} instead
- * of {@code render()}. For players this is {@link AvatarRenderState}.</p>
- *
- * <p>The satchel stack is looked up from the live player entity via UUID from the render state,
- * since AvatarRenderState does not carry an arbitrary satchel field (we do not mixin into it).
- * This is safe because SatchelLayer only renders on the client and the local level is always
- * available.</p>
+ * <p>
+ * {@code RenderLayer} operates on {@link AvatarRenderState} snapshots rather than a live
+ * {@code Entity}, via {@code submit()}. The satchel stack is looked up from the live player
+ * entity by the render state's numeric id instead, since {@code AvatarRenderState} doesn't
+ * carry a satchel field of its own — safe since this only runs client-side.
  */
 @Environment(EnvType.CLIENT)
 public class SatchelLayer<S extends AvatarRenderState, M extends EntityModel<S>>
@@ -47,7 +43,6 @@ public class SatchelLayer<S extends AvatarRenderState, M extends EntityModel<S>>
         this.itemModelResolver = itemModelResolver;
     }
 
-    // 26.1: RenderLayer's abstract method is submit() — PoseStack + SubmitNodeCollector + light + state + yRot + xRot.
     @Override
     public void submit(@NotNull PoseStack poseStack,
                        @NotNull SubmitNodeCollector submitNodeCollector,
@@ -57,8 +52,6 @@ public class SatchelLayer<S extends AvatarRenderState, M extends EntityModel<S>>
                        float xRot) {
         if (!SatchelsClientConfig.shouldRenderSatchel()) return;
 
-        // Retrieve the live player entity from the render state UUID.
-        // AvatarRenderState.id is the entity's numeric runtime ID.
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
         Entity entity = mc.level.getEntity(state.id);
@@ -77,16 +70,14 @@ public class SatchelLayer<S extends AvatarRenderState, M extends EntityModel<S>>
 
         poseStack.pushPose();
 
-        // Position the satchel on the player's back (body-relative transform).
+        // Position on the player's back (body-relative transform).
         model.body.translateAndRotate(poseStack);
         poseStack.translate(0, 4 / 16f, 0);
         poseStack.scale(-1, -1, 1);
 
-        // 26.1: bake the worn-model geometry (not the satchel's own inventory-icon model) into
-        // the render state via ItemModel#update directly — the ItemModelResolver's
-        // updateForTopItem() would resolve satchelStack's *own* model, which is the wrong
-        // geometry here. update(state, stack, resolver, displayContext, level, itemOwner, seed)
-        // — Player implements ItemOwner directly (confirmed via javap: Entity implements ItemOwner).
+        // Bakes the worn-model geometry via ItemModel#update directly, not
+        // ItemModelResolver#updateForTopItem — that would resolve satchelStack's own
+        // inventory-icon model instead of the worn geometry.
         ItemStackRenderState renderState = new ItemStackRenderState();
         wornModel.update(
                 renderState,
@@ -98,8 +89,6 @@ public class SatchelLayer<S extends AvatarRenderState, M extends EntityModel<S>>
                 player.getId()
         );
 
-        // 26.1: ItemStackRenderState.render(...) renamed to submit(...) (confirmed via javap —
-        // no render() method exists on this class anymore).
         renderState.submit(poseStack, submitNodeCollector, lightCoords,
                 net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, state.outlineColor);
 

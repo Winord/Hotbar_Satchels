@@ -36,27 +36,19 @@ public class VanillaCompat implements CompatEntrypoint {
 
         ItemStack current = slot.getItem();
 
-        // Mirrors AccessoriesCompat#canUnequipSatchel on the vanilla path: right-clicking a
-        // satchel to equip it always went through SatchelEquipmentSlot#setByPlayer unconditionally,
-        // silently overwriting (and dropping the contents of) a non-empty worn satchel. There is
-        // no equivalent CanUnequipCallback gate here since this path bypasses Slot#mayPickup
-        // entirely, so the check has to happen before the swap is attempted at all.
+        // Mirrors the compat modules' canUnequipSatchel check on the vanilla path: this path
+        // bypasses Slot#mayPickup entirely, so a non-empty worn satchel has to be blocked here
+        // before the swap, or it'd silently overwrite (and drop the contents of) the old one.
         if (current.is(ModTags.SATCHEL) && !SatchelData.get(player).getSatchelInventory().isEmpty()) return false;
 
         ItemStack held = player.getItemInHand(hand).copy();
 
-        // Write the previously-equipped satchel back into the hand BEFORE swapping the equip
-        // slot. SatchelEquipmentSlot#set (via slot.setByPlayer below) resizes SatchelData's
-        // satchel inventory to the newly-equipped item's tier immediately (updateTierFromStack),
-        // which can grow the range of hotbar indices SatchelData#isSlotInSatchel treats as
-        // "inside the satchel" (e.g. diamond/golden's 6 slots -> netherite's 9). If the hand's
-        // hotbar index falls into that newly-grown range, PlayerMixin#satchels$setSatchelSlotIfNeeded
-        // redirects any setItemSlot write landing there into the satchel's own storage instead
-        // of the real hotbar slot. Doing this write first, while the satchel is still sized to
-        // its old (smaller-or-equal) tier, guarantees the hand's index isn't yet considered part
-        // of the satchel — so `current` lands in the real hotbar slot as intended instead of
-        // being stashed inside the very satchel just equipped, with the original held stack
-        // left behind uncleared as a duplicate.
+        // Writes the previously-equipped satchel back into the hand BEFORE swapping the equip
+        // slot. slot.setByPlayer below resizes SatchelData's inventory to the new item's tier
+        // immediately, which can grow the "inside the satchel" hotbar index range (e.g. 6 slots
+        // -> 9) — if the hand's index falls into that newly-grown range, PlayerMixin would
+        // redirect this write into the satchel's own storage instead of the real hotbar slot.
+        // Doing the write first, while still sized to the old tier, avoids that.
         player.setItemInHand(hand, current.copy());
         slot.setByPlayer(held, current);
         return true;

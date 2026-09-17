@@ -20,7 +20,7 @@ import net.hotbar.satchels.content.satchel.SatchelUpgradeRecipe;
  * <b>bugfix (26.1, recipe missing from JEI):</b> since 1.21.2, Minecraft no longer bulk-sends
  * full {@code Recipe} objects to the client — the vanilla
  * {@code ClientboundUpdateRecipesPacket} was stripped down to just {@code itemSets}/
- * {@code stonecutterRecipes} (confirmed against the real 26.1.2 jar), and the recipe-book UI is
+ * {@code stonecutterRecipes}, and the recipe-book UI is
  * now populated from lightweight {@code RecipeDisplayEntry} data instead. Fabric restored
  * full-recipe sync as an opt-in replacement ("Recipe Sync API", fabric-recipe-api-v1, added for
  * 1.21.11/26.1): a mod's custom {@link RecipeSerializer} is only included in that sync if it is

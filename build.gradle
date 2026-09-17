@@ -14,7 +14,7 @@ repositories {
     mavenLocal()
     mavenCentral()
 
-    exclusiveContent { // Modrinth
+    exclusiveContent {
         forRepository {
             maven {
                 name = "Modrinth"
@@ -31,26 +31,22 @@ repositories {
         url = "https://maven.nucleoid.xyz/"
     }
 
-    maven { // Trinkets Updated — required transitive deps
+    maven {
         name = "TerraformersMC"
         url = "https://maven.terraformersmc.com/"
     }
-    maven { // Trinkets Updated — Yumi Framework
+    maven {
         name = "Ladysnake"
         url = "https://maven.ladysnake.org/releases"
     }
 
-    maven { // JEI
+    maven {
         name = "Jared's maven"
         url = "https://maven.blamejared.com/"
     }
 
-    maven { // Cloth Config, Mod Menu
+    maven {
         url = "https://maven.shedaniel.me/"
-    }
-
-    maven { // Mod Menu
-        url = "https://maven.terraformersmc.com/"
     }
 }
 
@@ -84,55 +80,37 @@ sourceSets {
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    // No mappings line — Minecraft 26.1+ ships an unobfuscated jar; Loom 1.15 detects this
-    // automatically and rejects officialMojangMappings() in that environment.
+    // 26.1+ ships an unobfuscated jar — no mappings line; Loom 1.16 detects this and
+    // rejects officialMojangMappings() here.
     implementation "net.fabricmc:fabric-loader:${loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 
-    // Trinkets Updated — archived for 26.1.x (see docs/accessory-compat-roadmap.md and
-    // SatchelsCompat's class javadoc): a known upstream slot-id/visual-position desync bug in
-    // the 4.0.x+26.1 line, only fixed via the rework that shipped alongside Trinkets' own 26.2
-    // port. TrinketsCompat.java stays in the codebase, dormant (SatchelsCompat.TRINKETS
-    // .shouldLoad is hardcoded false). Softened from a hard `implementation` to
-    // `compileOnly`/`localRuntime` — the satchel no longer requires players to install
-    // Trinkets Updated at all, since its integration doesn't activate. localRuntime keeps it
-    // available for `./gradlew runClient`/`runServer` dev testing without bundling it into the
-    // built jar. MIT licence, author Patbox. modId = "trinkets_updated"
-    // NOTE: plain `compileOnly`/`localRuntime`, not `modCompileOnly`/`modLocalRuntime` — 26.1
-    // ships an unobfuscated jar, so Loom dropped remapping (and the `mod`-prefixed configs
-    // that trigger it) entirely; see https://docs.fabricmc.net/develop/porting/.
+    // Archived for 26.1.x (upstream desync bug — see satchels-port-decisions-26_1.md §10).
+    // compileOnly/localRuntime only: not bundled, players don't need it installed.
     compileOnly "eu.pb4:trinkets:${trinkets_version}"
     localRuntime "eu.pb4:trinkets:${trinkets_version}"
 
-    // Ohmega — active satchel-accessory compat for 26.1.x, replacing Trinkets while the above
-    // is archived (see docs/accessory-compat-roadmap.md). OhmegaCompat.java is a real,
-    // verified implementation (checked against this exact jar via javap/CFR decompilation —
-    // see that class's javadoc for what was confirmed and why). MODID = "ohmega".
+    // Active satchel-accessory compat on 26.1.x while Trinkets is archived.
     compileOnly "maven.modrinth:ohmega:${ohmega_version}"
     localRuntime "maven.modrinth:ohmega:${ohmega_version}"
 
-    // Ohmega's own hard dependency — without it Ohmega's ModInitializer throws registering its
-    // config spec, so runClient/runServer would crash even though this isn't our mod's own
-    // dependency. See gradle.properties for why this doesn't need to appear in fabric.mod.json.
+    // Ohmega's own hard dependency — without it Ohmega's ModInitializer crashes on startup.
     compileOnly "maven.modrinth:forge-config-api-port:${forgeconfigapiport_version}-fabric"
     localRuntime "maven.modrinth:forge-config-api-port:${forgeconfigapiport_version}-fabric"
 
     implementation "maven.modrinth:raised:${raised_version}"
 
-    // JEI — optional integration; compile against API only, runtime for dev runs
     compileOnly "mezz.jei:jei-${minecraft_version}-fabric-api:${jei_version}"
     runtimeOnly "mezz.jei:jei-${minecraft_version}-fabric:${jei_version}"
 
-    // EMI removed — development stopped at 1.21.1 (archived in emi-compat-archive/).
+    // EMI removed — development stopped at 1.21.1, no Fabric build past it.
 
-    // Mod Menu — compile-only; implements ModMenuApi for config screen registration
     compileOnly "com.terraformersmc:modmenu:${modmenu_version}"
 
     implementation("me.shedaniel.cloth:cloth-config-fabric:${cloth_config_version}") {
         exclude group: "net.fabricmc.fabric-api"
     }
 
-    // MixinExtras — bundled into the jar; needed for @Expression/@Definition in mixins
     include(implementation(annotationProcessor("io.github.llamalad7:mixinextras-fabric:${mixinextras_api_version}")))
 }
 
@@ -151,13 +129,9 @@ java {
     withSourcesJar()
     sourceCompatibility = JavaVersion.VERSION_25
     targetCompatibility = JavaVersion.VERSION_25
-    // Without this, `options.release = 25` above just asserts against whatever JVM happens
-    // to have started the Gradle daemon (JAVA_HOME / PATH `java` at the time `gradlew` was
-    // invoked) — if that JVM is older than 25, javac fails immediately with
-    // "error: release version 25 not supported", even on a machine that has a JDK 25
-    // installed elsewhere. This block makes Gradle's toolchain resolution actively search
-    // for (not download — no network needed if it's already installed) a JDK 25 to compile
-    // with, independent of which JVM launched the daemon.
+    // Forces toolchain resolution to find a JDK 25 regardless of which JVM launched the
+    // Gradle daemon — without this, `options.release = 25` above just asserts against
+    // whatever `java` started gradlew, and fails on an older JVM even if JDK 25 exists.
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
     }

@@ -24,15 +24,17 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 
 /**
- * Trinkets Updated integration (replaces {@code AccessoriesCompat} on 26.x).
+ * Trinkets Updated integration.
  * <p>
- * Equips/unequips the satchel through the {@code chest/satchel} trinket slot,
- * prevents unequipping while it has contents, plays the equip sound, drops the
- * satchel's contents on unequip, and tracks the dye tint per player.
+ * <b>Archived on 26.1.x</b> — {@code SatchelsCompat.TRINKETS.shouldLoad} is hardcoded
+ * {@code false} due to an upstream slot desync bug; {@link net.hotbar.satchels.compat.ohmega.OhmegaCompat}
+ * is the active replacement. This class stays fully working and dormant for re-enabling on
+ * 26.2. See {@code satchels-port-decisions-26_1.md}.
  * <p>
- * The slot is data-driven: {@code data/trinkets/entities/player/chest/satchel.json}
- * must be present in the mod's resources (group {@code chest}, slot name {@code satchel}).
- * Items are tagged via {@code data/trinkets/tags/item/chest/satchel.json}.
+ * Equips/unequips the satchel through the {@code chest/satchel} trinket slot, prevents
+ * unequipping while it has contents, plays the equip sound, drops the satchel's contents on
+ * unequip, and tracks the dye tint per player. The slot is data-driven via
+ * {@code data/trinkets/entities/player/chest/satchel.json} / {@code .../tags/item/chest/satchel.json}.
  * <p>
  * {@code TriState} here is {@code dev.yumi.commons.TriState} (a Trinkets Updated / Yumi
  * transitive dep), NOT {@code net.fabricmc.fabric.api.util.TriState}.
@@ -71,18 +73,15 @@ public class TrinketsCompat implements CompatEntrypoint {
         ItemStack stack = player.getItemInHand(hand);
         if (stack.isEmpty() || !stack.is(ModTags.SATCHEL)) return false;
 
-        // Find the first available slot in chest/satchel group.
         var inventory = attachment.getInventory(SLOT_ID);
         if (inventory == null) return false;
 
-        // Iterate through the inventory slots looking for an empty one.
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             TrinketSlotAccess access = inventory.getOrCreateSlotAccess(i);
             if (!TrinketSlotUtils.isSlotCompatible(access, stack)) continue;
             if (!TrinketSlotUtils.mayPlace(access, stack)) continue;
 
             ItemStack existing = access.get();
-            // Place into the slot (swap if already occupied with a different item).
             access.set(stack.copy());
             player.setItemInHand(hand, existing.isEmpty() ? ItemStack.EMPTY : existing);
             return true;
@@ -127,11 +126,10 @@ public class TrinketsCompat implements CompatEntrypoint {
         TrinketAttachment attachment = TrinketsApi.getAttachment(player);
         if (attachment == null) return ItemStack.EMPTY;
 
-        // Check functional slot first.
         Optional<TrinketSlotAccess> first = attachment.findFirst(s -> s.is(ModTags.SATCHEL));
         if (first.isPresent()) return first.get().get();
 
-        // Fall back: cosmetic slot.
+        // Fallback: cosmetic slot.
         var inventory = attachment.getInventory(SLOT_ID);
         if (inventory == null) return ItemStack.EMPTY;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
@@ -156,13 +154,11 @@ public class TrinketsCompat implements CompatEntrypoint {
         TrinketAttachment attachment = TrinketsApi.getAttachment(player);
         if (attachment == null) return false;
 
-        // Check functional slots for visibility flag.
         Optional<TrinketSlotAccess> first = attachment.findFirst(s -> s.is(ModTags.SATCHEL));
         if (first.isPresent()) {
             return first.get().isVisible();
         }
 
-        // Check cosmetic slots.
         var inventory = attachment.getInventory(SLOT_ID);
         if (inventory == null) return false;
         for (int i = 0; i < inventory.getContainerSize(); i++) {
