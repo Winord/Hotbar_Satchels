@@ -50,8 +50,8 @@ public final class SatchelsConfigScreen {
 
         ConfigEntryBuilder entries = builder.entryBuilder();
 
-        buildServerCategory(builder, entries);
         buildClientCategory(builder, entries);
+        buildServerCategory(builder, entries);
 
         return builder.build();
     }

@@ -195,6 +195,7 @@ public class SatchelsCommonConfig {
                 "minecraft:hopper 0 -33",
                 "minecraft:merchant 100 0 100 0",
                 "minecraft:beacon 28 53 28 0",
+                "minecraft:horse",
                 "farmersdelight:cooking_pot",
                 "curios:curios_container",
                 "accessories:original_menu",

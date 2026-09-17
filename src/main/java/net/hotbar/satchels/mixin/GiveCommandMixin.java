@@ -3,6 +3,7 @@ package net.hotbar.satchels.mixin;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
+import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.server.commands.GiveCommand;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
@@ -15,10 +16,20 @@ public class GiveCommandMixin {
     @WrapOperation(method = "giveItem", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/entity/player/Inventory;add(Lnet/minecraft/world/item/ItemStack;)Z"))
     private static boolean satchels$prioritizeSatchel(Inventory inventory, ItemStack stack, Operation<Boolean> original, @Local ServerPlayer player) {
         SatchelData satchelData = SatchelData.get(player);
+
+        ItemStack preTriggerSnapshot = stack.copy();
+
+        boolean success;
         if (satchelData.isActive()) {
-            return satchelData.getSatchelInventory().pickup(stack) || original.call(inventory, stack);
+            success = satchelData.getSatchelInventory().pickup(stack) || original.call(inventory, stack);
+        } else {
+            success = original.call(inventory, stack) || (satchelData.canAccess() && satchelData.getSatchelInventory().pickup(stack));
         }
 
-        return original.call(inventory, stack) || (satchelData.canAccess() && satchelData.getSatchelInventory().pickup(stack));
+        if (success) {
+            CriteriaTriggers.INVENTORY_CHANGED.trigger(player, player.getInventory(), preTriggerSnapshot);
+        }
+
+        return success;
     }
 }

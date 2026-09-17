@@ -72,6 +72,19 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * Prevents throwing an item when clicking on a visible {@code SatchelEquipmentSlot}:
      * that slot is outside the pixel bounds {@code ScreenWithSatchel.hasClickedOutside}
      * treats as "inside the window" (it only widens that zone for the satchel inventory row).
+     * <p>
+     * Also short-circuits for a real, hovered {@code SatchelInventorySlot}. {@code findSlot}
+     * already did a precise hit-test against that slot's actual {@code x}/{@code y} (kept in
+     * sync with the rendered row by {@code updateY}); the widened check below is a separate,
+     * hand-rolled approximation of the same region (hotbar offset * 18, sprite width, a flat
+     * +26 margin) that isn't guaranteed to agree with it pixel-for-pixel on every screen's
+     * geometry. Without this guard, a click vanilla's {@code slotClicked} still resolves
+     * against the correct {@code slot} (it re-derives {@code slotId} from a non-null
+     * {@code slot} itself) but with a {@code slotId} the approximation forced to {@code -999}
+     * moments earlier — which flips the outcome from a normal pickup to {@code ClickType.THROW}
+     * against that same real slot, i.e. clicking a satchel item drops one copy of it instead of
+     * picking it up. Trusting the real hit-test whenever it succeeds removes the disagreement
+     * entirely rather than chasing it screen-by-screen.
      */
     @ModifyExpressionValue(method = {"mouseClicked", "mouseReleased"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;hasClickedOutside(DDIII)Z"))
     public boolean satchels$hasClickedOutside(boolean original, double x, double y, int click) {
@@ -79,6 +92,9 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
         Slot hovered = findSlot(x, y);
         if (hovered instanceof SatchelEquipmentSlot satchelSlot && satchelSlot.isShown(Minecraft.getInstance().player, this.getMenu())) {
+            return false;
+        }
+        if (hovered instanceof SatchelInventorySlot) {
             return false;
         }
 
