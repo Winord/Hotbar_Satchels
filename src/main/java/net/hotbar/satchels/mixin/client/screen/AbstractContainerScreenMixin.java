@@ -70,7 +70,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
     @Shadow
     protected abstract Slot getHoveredSlot(double pMouseX, double pMouseY);
-    
+
     @ModifyExpressionValue(method = "mouseClicked", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;hasClickedOutside(DDII)Z"))
     public boolean satchels$hasClickedOutsideOnClick(boolean original, MouseButtonEvent event, boolean bl) {
         return satchels$hasClickedOutside(original, event);
