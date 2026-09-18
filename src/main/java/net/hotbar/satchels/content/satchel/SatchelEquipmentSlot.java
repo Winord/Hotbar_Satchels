@@ -19,7 +19,7 @@ import org.jetbrains.annotations.NotNull;
 public class SatchelEquipmentSlot extends Slot {
     private static final Container emptyInventory = new SimpleContainer(0);
     private final Player player;
-    private final int baseX;
+    private int baseX;
 
     public SatchelEquipmentSlot(Player player, int xPosition, int yPosition) {
         super(emptyInventory, 0, xPosition, yPosition);
@@ -45,6 +45,26 @@ public class SatchelEquipmentSlot extends Slot {
         this.x = baseX + offset;
     }
 
+    /**
+     * Re-anchors the slot before {@link #updateX} applies the slide-in/out tween offset, so the
+     * indicator lands in the right spot on whatever {@code allowed_menus} screen is currently
+     * open — each has its own {@code imageWidth}/{@code imageHeight}, unlike the fixed
+     * {@code InventoryScreen} the slot's construction-time {@code (x, y)} used to assume.
+     * <p>
+     * {@code baseX}/{@code y} aren't known at menu-construction time (the server-side
+     * {@code AbstractContainerMenuMixin} hook that adds this slot to non-{@code InventoryMenu}
+     * menus has no idea what texture a client screen will use), so {@code
+     * AbstractContainerScreenMixin} calls this once per frame with the current screen's own
+     * geometry before calling {@link #updateX}. {@code InventoryScreen} is 176 wide, 166 tall,
+     * and {@code InventoryMenuMixin}'s original hand-placed slot sits at {@code (180, 142)},
+     * i.e. exactly {@code (imageWidth + 4, imageHeight - 24)}; that same relationship is reused
+     * here for every menu so behavior on {@code InventoryScreen} itself is unchanged.
+     */
+    public void updateBase(int baseX, int y) {
+        this.baseX = baseX;
+        this.y = y;
+    }
+
     @Override
     public void setByPlayer(@NotNull ItemStack to, @NotNull ItemStack from) {
         super.setByPlayer(to, from);
@@ -57,7 +77,7 @@ public class SatchelEquipmentSlot extends Slot {
         SatchelData data = SatchelData.get(player);
         return menu.getCarried().is(ModTags.SATCHEL) || (
                 data.getSatchelInventory().isEmpty() &&
-                this.getItem().is(ModTags.SATCHEL)
+                        this.getItem().is(ModTags.SATCHEL)
         );
     }
 

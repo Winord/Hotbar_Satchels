@@ -105,8 +105,17 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
     /**
      * Renders the satchel inventory background and slides {@code SatchelInventorySlot} items
-     * with it. For {@code InventoryMenu} also renders the equipment-slot indicator and slides
-     * the {@code SatchelEquipmentSlot} icon with the sprite.
+     * with it. Also renders the equipment-slot indicator and slides the
+     * {@code SatchelEquipmentSlot} icon with the sprite, in every {@code allowed_menus} screen
+     * that has one — not just {@code InventoryMenu} — now that {@code AbstractContainerMenuMixin}
+     * adds the slot generically. {@code satchelEquipmentSlot.updateBase(...)} re-anchors the
+     * slot to the current screen's own {@code imageWidth}/{@code imageHeight} each frame before
+     * the tween offset is applied, since the slot's real construction-time position is an
+     * unused placeholder for every menu except {@code InventoryMenu} (see
+     * {@code SatchelEquipmentSlot#updateBase}'s javadoc). {@code renderSatchelSlot} itself is a
+     * no-op via {@code SatchelsCompat.VANILLA.isLoaded()} whenever an accessory-slot compat
+     * (Ohmega) is handling satchel equip instead, and no {@code SatchelEquipmentSlot} exists in
+     * the menu in the first place then, so the loop below is a no-op too in that case.
      * <p>
      * Injected at {@code HEAD} of {@code extractContents}: fires after the panel background is
      * drawn (since {@code extractBackground} always runs first) and before slots/labels — same
@@ -143,14 +152,15 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         int screenWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
         int screenHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
 
-        if (menu instanceof InventoryMenu) {
-            guiGraphics.enableScissor(this.leftPos + this.imageWidth, 0, screenWidth, screenHeight);
-            satchels$screenWithSatchel.renderSatchelSlot(guiGraphics, this.leftPos, this.topPos, this.imageWidth, this.imageHeight);
-            guiGraphics.disableScissor();
+        guiGraphics.enableScissor(this.leftPos + this.imageWidth, 0, screenWidth, screenHeight);
+        satchels$screenWithSatchel.renderSatchelSlot(guiGraphics, this.leftPos, this.topPos, this.imageWidth, this.imageHeight);
+        guiGraphics.disableScissor();
 
-            int slotXOffset = (int) satchels$screenWithSatchel.getSlotXOffset();
-            for (Slot slot : this.menu.slots) {
-                if (slot instanceof SatchelEquipmentSlot satchelEquipmentSlot) satchelEquipmentSlot.updateX(slotXOffset);
+        int slotXOffset = (int) satchels$screenWithSatchel.getSlotXOffset();
+        for (Slot slot : this.menu.slots) {
+            if (slot instanceof SatchelEquipmentSlot satchelEquipmentSlot) {
+                satchelEquipmentSlot.updateBase(this.imageWidth + 4, this.imageHeight - 24);
+                satchelEquipmentSlot.updateX(slotXOffset);
             }
         }
 
