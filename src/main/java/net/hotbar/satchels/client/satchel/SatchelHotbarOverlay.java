@@ -46,7 +46,7 @@ public class SatchelHotbarOverlay {
 
     public void render(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options.hideGui || mc.gameMode == null || mc.gameMode.getPlayerMode() == GameType.SPECTATOR)
+        if (mc.gui.hud.isHidden() || mc.gameMode == null || mc.gameMode.getPlayerMode() == GameType.SPECTATOR)
             return;
 
         int x = graphics.guiWidth() / 2 - 91;

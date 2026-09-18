@@ -124,7 +124,7 @@ public class SatchelsClient implements ClientModInitializer {
 
     /** True when the open screen's menu is on the {@code allowed_menus} list. */
     private static boolean isAllowedContainerScreenOpen(Minecraft client) {
-        if (!(client.screen instanceof AbstractContainerScreen<?> abs)) return false;
+        if (!(client.gui.screen() instanceof AbstractContainerScreen<?> abs)) return false;
 
         Identifier location = SatchelMenuLocation.resolve(abs.getMenu());
         return location != null && SatchelsCommonConfig.isAllowed(location);

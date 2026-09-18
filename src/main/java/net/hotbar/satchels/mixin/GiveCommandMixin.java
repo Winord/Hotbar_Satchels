@@ -10,7 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.triggers.CriteriaTriggers;
 
 @Mixin(GiveCommand.class)
 public class GiveCommandMixin {

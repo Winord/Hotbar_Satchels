@@ -6,7 +6,6 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
@@ -14,6 +13,7 @@ import net.minecraft.world.level.gamerules.GameRules;
 import net.hotbar.satchels.api.SatchelAccess;
 import net.hotbar.satchels.api.MenuWithSatchel;
 import net.hotbar.satchels.content.satchel.SatchelData;
+import net.hotbar.satchels.util.SatchelOffset;
 import net.hotbar.satchels.content.satchel.SatchelInventorySlot;
 
 /**
@@ -74,7 +74,7 @@ public class SatchelsEventHooks {
         if (SatchelsCommonConfig.shouldLog()) LogUtils.getLogger().info("satchels: opened {}", menuLocation);
         if (!SatchelsCommonConfig.isAllowed(menuLocation)) return;
 
-        Tuple<Integer, Integer> offset = SatchelsCommonConfig.getOffset(menuLocation);
-        MenuWithSatchel.addInventorySlots(satchelData, menu::addSlot, 8 + offset.getA(), 170 + offset.getB(), 18);
+        SatchelOffset offset = SatchelsCommonConfig.getOffset(menuLocation);
+        MenuWithSatchel.addInventorySlots(satchelData, menu::addSlot, 8 + offset.x(), 170 + offset.y(), 18);
     }
 }

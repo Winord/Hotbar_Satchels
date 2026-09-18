@@ -10,7 +10,7 @@ import net.minecraft.client.gui.screens.inventory.*;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Tuple;
+import net.hotbar.satchels.util.SatchelOffset;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.*;
 import net.minecraft.world.inventory.ContainerInput;
@@ -99,8 +99,8 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
         if (location == null) return true;
         if (!SatchelsCommonConfig.isAllowed(location)) return true;
-        Tuple<Integer, Integer> offset = SatchelsCommonConfig.getOffset(location);
-        return ScreenWithSatchel.hasClickedOutside(x, y, leftPos + offset.getA(), topPos + offset.getB(), this.imageHeight);
+        SatchelOffset offset = SatchelsCommonConfig.getOffset(location);
+        return ScreenWithSatchel.hasClickedOutside(x, y, leftPos + offset.x(), topPos + offset.y(), this.imageHeight);
     }
 
     /**
@@ -164,22 +164,22 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
             }
         }
 
-        Tuple<Integer, Integer> offset = SatchelsCommonConfig.getOverlayOffset(location);
+        SatchelOffset offset = SatchelsCommonConfig.getOverlayOffset(location);
         boolean forceHidden = SatchelsClientConfig.isSatchelHiddenInInventory();
-        // Clip boundary must track the panel's actual bottom edge (topPos + offset.getB()),
+        // Clip boundary must track the panel's actual bottom edge (topPos + offset.y()),
         // not the un-offset imageHeight — otherwise a nonzero overlayYOffset (e.g. shulker_box's
         // default "0 -1") crops the row by that many pixels. The row's corner pixel (see
         // ModSprites/ScreenWithSatchel javadoc) needs a second, separate scissor pass below —
         // it sits 1px above this clip line and this boundary must not move to accommodate it.
-        guiGraphics.enableScissor(0, this.topPos + this.imageHeight + offset.getB(), screenWidth, screenHeight);
-        satchels$screenWithSatchel.renderSatchelInventory(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight, forceHidden);
+        guiGraphics.enableScissor(0, this.topPos + this.imageHeight + offset.y(), screenWidth, screenHeight);
+        satchels$screenWithSatchel.renderSatchelInventory(guiGraphics, this.leftPos + offset.x(), this.topPos + offset.y(), this.imageHeight, forceHidden);
         guiGraphics.disableScissor();
 
         // Second, always-on scissor pass for the row's corner "tuck" pixel — see
         // ScreenWithSatchel#renderSatchelInventoryCorners's javadoc. Called after the main
         // scissor is disabled, not nested: GuiGraphics' scissor stack only intersects with
         // whatever is already active, so a nested rect could never expose a pixel above it.
-        satchels$screenWithSatchel.renderSatchelInventoryCorners(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight);
+        satchels$screenWithSatchel.renderSatchelInventoryCorners(guiGraphics, this.leftPos + offset.x(), this.topPos + offset.y(), this.imageHeight);
 
         int rowOffset = (int) satchels$screenWithSatchel.getInventoryYOffset();
         for (Slot slot : this.menu.slots) {
@@ -325,8 +325,8 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         } else {
             // Must track overlayOffset the same way the background-bar clip above does, or a
             // nonzero overlayYOffset clips real pixels off the icon row's bottom edge.
-            Tuple<Integer, Integer> overlayOffset = SatchelsCommonConfig.getOverlayOffset(location);
-            int scissorBottomEdge = this.imageHeight + overlayOffset.getB();
+            SatchelOffset overlayOffset = SatchelsCommonConfig.getOverlayOffset(location);
+            int scissorBottomEdge = this.imageHeight + overlayOffset.y();
             guiGraphics.enableScissor(0, scissorBottomEdge, screenWidth, screenHeight);
         }
     }

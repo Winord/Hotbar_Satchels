@@ -5,8 +5,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParseException;
 import com.mojang.logging.LogUtils;
 import net.fabricmc.loader.api.FabricLoader;
+import net.hotbar.satchels.util.SatchelOffset;
 import net.minecraft.resources.Identifier;
-import net.minecraft.util.Tuple;
 import org.slf4j.Logger;
 
 import java.io.IOException;
@@ -37,8 +37,8 @@ public class SatchelsCommonConfig {
     private static List<String> allowedMenusRaw = new ArrayList<>(getMenuDefaults());
 
     private static final List<Identifier> allowed = new ArrayList<>();
-    private static final Map<Identifier, Tuple<Integer, Integer>> offsets = new HashMap<>();
-    private static final Map<Identifier, Tuple<Integer, Integer>> overlayOffsets = new HashMap<>();
+    private static final Map<Identifier, SatchelOffset> offsets = new HashMap<>();
+    private static final Map<Identifier, SatchelOffset> overlayOffsets = new HashMap<>();
 
     private record Data(boolean log_opened_menu, List<String> allowed_menus) {
     }
@@ -90,14 +90,14 @@ public class SatchelsCommonConfig {
             if (split.length == 3) {
                 int x = Integer.parseInt(split[1]);
                 int y = Integer.parseInt(split[2]);
-                offsets.put(location, new Tuple<>(x, y));
+                offsets.put(location, new SatchelOffset(x, y));
             } else if (split.length == 5) {
                 int x = Integer.parseInt(split[1]);
                 int y = Integer.parseInt(split[2]);
                 int xOverlay = Integer.parseInt(split[3]);
                 int yOverlay = Integer.parseInt(split[4]);
-                offsets.put(location, new Tuple<>(x, y));
-                overlayOffsets.put(location, new Tuple<>(xOverlay, yOverlay));
+                offsets.put(location, new SatchelOffset(x, y));
+                overlayOffsets.put(location, new SatchelOffset(xOverlay, yOverlay));
             }
         }
     }
@@ -110,12 +110,12 @@ public class SatchelsCommonConfig {
         return allowed.contains(menuLocation);
     }
 
-    public static Tuple<Integer, Integer> getOffset(Identifier menuLocation) {
-        return offsets.getOrDefault(menuLocation, new Tuple<>(0, 0));
+    public static SatchelOffset getOffset(Identifier menuLocation) {
+        return offsets.getOrDefault(menuLocation, SatchelOffset.ZERO);
     }
 
-    public static Tuple<Integer, Integer> getOverlayOffset(Identifier menuLocation) {
-        return overlayOffsets.getOrDefault(menuLocation, new Tuple<>(0, 0));
+    public static SatchelOffset getOverlayOffset(Identifier menuLocation) {
+        return overlayOffsets.getOrDefault(menuLocation, SatchelOffset.ZERO);
     }
 
     // region Used by the Cloth Config GUI screen (SatchelsConfigScreen, via Mod Menu)

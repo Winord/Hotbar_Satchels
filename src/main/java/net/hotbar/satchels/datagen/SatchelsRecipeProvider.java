@@ -105,7 +105,7 @@ public class SatchelsRecipeProvider extends FabricRecipeProvider {
             private void satchelUpgradeRecipe(
                     RecipeOutput output, Identifier id, RecipeCategory category, net.minecraft.world.level.ItemLike result,
                     List<String> pattern, Map<Character, Ingredient> key,
-                    String criterionName, net.minecraft.advancements.Criterion<?> criterion
+                    String criterionName, net.minecraft.advancements.triggers.Criterion<?> criterion
             ) {
                 ShapedRecipePattern shapedPattern = ShapedRecipePattern.of(key, pattern);
                 ResourceKey<Recipe<?>> recipeId = ResourceKey.create(Registries.RECIPE, id);

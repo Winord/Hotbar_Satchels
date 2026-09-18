@@ -90,9 +90,17 @@ dependencies {
     compileOnly "eu.pb4:trinkets:${trinkets_version}"
     localRuntime "eu.pb4:trinkets:${trinkets_version}"
 
-    // Active satchel-accessory compat on 26.1.x while Trinkets is archived.
-    compileOnly "maven.modrinth:ohmega:${ohmega_version}"
-    localRuntime "maven.modrinth:ohmega:${ohmega_version}"
+    // Active satchel-accessory compat while Trinkets is archived.
+    // Pinned as a local file, NOT "maven.modrinth:ohmega:${ohmega_version}" — Ohmega reuses the
+    // same version_number "1.5.21" across its 26.1.2, 26.2 and 26.3 Fabric builds (confirmed via
+    // CurseForge's file listing), so that coordinate is ambiguous and can silently resolve to the
+    // wrong Minecraft-version build. The jar in libs/ has been verified directly against 26.2's
+    // decompiled classes (com.swacky.ohmega.api.{AccessoryHelper,IAccessory} match OhmegaCompat's
+    // imports exactly) — see gradle.properties. Swap back to the maven coordinate once Ohmega's
+    // publishing gets a real version_id/classifier per Minecraft version, or once satisfied the
+    // ambiguous coordinate resolves correctly in this environment.
+    compileOnly files("libs/ohmega-${ohmega_version}+26.2.jar")
+    localRuntime files("libs/ohmega-${ohmega_version}+26.2.jar")
 
     // Ohmega's own hard dependency — without it Ohmega's ModInitializer crashes on startup.
     compileOnly "maven.modrinth:forge-config-api-port:${forgeconfigapiport_version}-fabric"
