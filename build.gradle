@@ -80,8 +80,8 @@ sourceSets {
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    // 26.1+ ships an unobfuscated jar — no mappings line; Loom 1.16 detects this and
-    // rejects officialMojangMappings() here.
+    // 26.1+ ships an unobfuscated jar — no mappings line; Loom (1.16 on 26.1.x, 1.17 on
+    // 26.2) detects this and rejects officialMojangMappings() here.
     implementation "net.fabricmc:fabric-loader:${loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 
