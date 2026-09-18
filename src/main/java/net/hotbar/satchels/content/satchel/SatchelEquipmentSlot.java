@@ -19,30 +19,40 @@ import org.jetbrains.annotations.NotNull;
 public class SatchelEquipmentSlot extends Slot {
     private static final Container emptyInventory = new SimpleContainer(0);
     private final Player player;
-    private final int baseX;
 
+    /**
+     * {@code xPosition}/{@code yPosition} are just the vanilla {@link Slot} constructor's
+     * required starting coordinates — harmless placeholders. The real, screen-relative
+     * position is now recomputed every frame by {@link #updatePosition}, because unlike the
+     * old survival-inventory-only wiring, this slot can now live in a menu of any size, so a
+     * baked-in x/y from construction time can't be right for all of them.
+     */
     public SatchelEquipmentSlot(Player player, int xPosition, int yPosition) {
         super(emptyInventory, 0, xPosition, yPosition);
         this.player = player;
-        this.baseX = xPosition;
     }
 
     /**
-     * Slides the slot's item icon horizontally in lockstep with {@code ScreenWithSatchel
-     * #renderSatchelSlot}'s background-sprite tween ({@code slotXOffset}), so the item stays
-     * glued to the sprite instead of sitting frozen at its construction-time {@code x} while
-     * the background slides in/out on equip/unequip. Mirrors {@code SatchelInventorySlot
-     * #updateX/#updateY} for the same reason: vanilla's per-slot item render pass reads
-     * {@code Slot#x} directly and has no idea the background it's sitting on is animated.
+     * Recomputes this slot's screen-relative position from the CURRENT screen's own
+     * {@code imageWidth}/{@code imageHeight}, so the real, clickable {@link Slot} lines up with
+     * {@code ScreenWithSatchel#renderSatchelSlot}'s purely-visual sprite regardless of which
+     * allowed menu's screen is open — that method already blits the background sprite at
+     * {@code left + width + slotXOffset - 1, top + height - 30}; mirroring the same formula
+     * here (screen-relative, i.e. without the {@code left}/{@code top} anchor vanilla adds back
+     * on render) is what lets one generic slot follow any menu's own dimensions instead of the
+     * single fixed spot the old survival-GUI-only {@code baseX} constant assumed.
      * <p>
-     * Unlike {@code SatchelInventorySlot#updateY} (which has to negate the offset — see its
-     * javadoc), this one adds the offset directly: the background sprite in
-     * {@code renderSatchelSlot} is blitted at {@code left + width + slotXOffset - 1}, i.e.
-     * already {@code baseX}-relative in the same direction as {@code slotXOffset} grows, so
-     * {@code baseX + offset} matches it without a sign flip.
+     * The {@code +5}/{@code +6} matter: the 27x28 backdrop sprite and the actual item "hole"
+     * inside it aren't the same rect — {@code renderSatchelSlot} draws its own empty-slot
+     * placeholder icon at {@code x + 5, y + 6} within that backdrop, and this slot's position
+     * needs to match that inner hole (where vanilla will actually draw a held item and
+     * hit-test clicks), not the backdrop's own top-left corner. The old fixed constants
+     * ({@code 170 + 10, 142}) baked this same {@code +5, +6} in already — it's just no longer
+     * obvious once the position is computed instead of hardcoded.
      */
-    public void updateX(int offset) {
-        this.x = baseX + offset;
+    public void updatePosition(int imageWidth, int imageHeight, int xOffset) {
+        this.x = imageWidth + xOffset - 1 + 5;
+        this.y = imageHeight - 30 + 6;
     }
 
     @Override

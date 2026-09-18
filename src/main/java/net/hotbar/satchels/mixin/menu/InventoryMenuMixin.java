@@ -26,8 +26,10 @@ public abstract class InventoryMenuMixin extends RecipeBookMenu<CraftingInput, C
     public void satchels$addMoreSlots(Inventory inventory, boolean bl, Player player, CallbackInfo ci) {
         SatchelData satchelData = SatchelData.get(player);
 
+        // x/y are placeholders now — SatchelEquipmentSlot#updatePosition recomputes the real,
+        // screen-relative position every frame client-side (see AbstractContainerScreenMixin).
         if (SatchelsCompat.VANILLA.isLoaded()) this.addSlot(
-                new SatchelEquipmentSlot(player, 170 + 10, 142)
+                new SatchelEquipmentSlot(player, 0, 0)
         );
         MenuWithSatchel.addInventorySlots(satchelData, s -> this.addSlot(s), 8, 170, 18);
     }

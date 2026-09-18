@@ -68,24 +68,6 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     @Shadow
     protected abstract Slot findSlot(double pMouseX, double pMouseY);
 
-    /**
-     * Prevents throwing an item when clicking on a visible {@code SatchelEquipmentSlot}:
-     * that slot is outside the pixel bounds {@code ScreenWithSatchel.hasClickedOutside}
-     * treats as "inside the window" (it only widens that zone for the satchel inventory row).
-     * <p>
-     * Also short-circuits for a real, hovered {@code SatchelInventorySlot}. {@code findSlot}
-     * already did a precise hit-test against that slot's actual {@code x}/{@code y} (kept in
-     * sync with the rendered row by {@code updateY}); the widened check below is a separate,
-     * hand-rolled approximation of the same region (hotbar offset * 18, sprite width, a flat
-     * +26 margin) that isn't guaranteed to agree with it pixel-for-pixel on every screen's
-     * geometry. Without this guard, a click vanilla's {@code slotClicked} still resolves
-     * against the correct {@code slot} (it re-derives {@code slotId} from a non-null
-     * {@code slot} itself) but with a {@code slotId} the approximation forced to {@code -999}
-     * moments earlier — which flips the outcome from a normal pickup to {@code ClickType.THROW}
-     * against that same real slot, i.e. clicking a satchel item drops one copy of it instead of
-     * picking it up. Trusting the real hit-test whenever it succeeds removes the disagreement
-     * entirely rather than chasing it screen-by-screen.
-     */
     @ModifyExpressionValue(method = {"mouseClicked", "mouseReleased"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screens/inventory/AbstractContainerScreen;hasClickedOutside(DDIII)Z"))
     public boolean satchels$hasClickedOutside(boolean original, double x, double y, int click) {
         if (!original) return false;
@@ -108,8 +90,11 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
 
     /**
      * Renders the satchel inventory background and slides {@code SatchelInventorySlot} items
-     * with it. For {@code InventoryMenu} also renders the equipment-slot indicator and slides
-     * the {@code SatchelEquipmentSlot} icon with the sprite.
+     * with it. Also renders the equipment-slot indicator and slides the
+     * {@code SatchelEquipmentSlot} icon with the sprite, for whichever allowed menu happens to
+     * have one in {@code this.menu.slots} — no longer restricted to {@code InventoryMenu}: see
+     * {@code SatchelEquipmentSlot#updatePosition} and {@code AbstractContainerMenuMixin} for
+     * how the slot itself now gets added generically instead of only in the survival GUI.
      * <p>
      * Injected at the {@code renderBg} call inside {@code renderBackground} so it fires after
      * the vanilla background is already drawn but before item icons.
@@ -121,13 +106,11 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         if (location == null) return;
         if (!SatchelsCommonConfig.isAllowed(location)) return;
 
-        if (menu instanceof InventoryMenu) {
-            satchels$screenWithSatchel.renderSatchelSlot(guiGraphics, this.leftPos, this.topPos, this.imageWidth, this.imageHeight);
+        satchels$screenWithSatchel.renderSatchelSlot(guiGraphics, this.leftPos, this.topPos, this.imageWidth, this.imageHeight);
 
-            int slotXOffset = (int) satchels$screenWithSatchel.getSlotXOffset();
-            for (Slot slot : this.menu.slots) {
-                if (slot instanceof SatchelEquipmentSlot satchelEquipmentSlot) satchelEquipmentSlot.updateX(slotXOffset);
-            }
+        int slotXOffset = (int) satchels$screenWithSatchel.getSlotXOffset();
+        for (Slot slot : this.menu.slots) {
+            if (slot instanceof SatchelEquipmentSlot satchelEquipmentSlot) satchelEquipmentSlot.updatePosition(this.imageWidth, this.imageHeight, slotXOffset);
         }
 
         Tuple<Integer, Integer> offset = SatchelsCommonConfig.getOverlayOffset(location);
@@ -228,11 +211,7 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
     public void satchels$swapWithSatchelSlot(AbstractContainerScreen<?> instance, Slot slot, int index, int i, ClickType type, Operation<Void> original) {
         Player player = Minecraft.getInstance().player;
         SatchelData data = SatchelData.get(player);
-        // Without this guard, vanilla's ClickType.SWAP branch calls Slot#remove on the source
-        // before SatchelInventory#canPlaceItem ever runs — the stack is pulled out with nowhere
-        // to go and silently deleted. This covers both a worn satchel being swapped into its
-        // own storage and a different satchel from the inventory being swapped into the
-        // equipped one's storage.
+
         if (
                 SatchelsClientConfig.shouldSwapWithShiftKey() &&
                         data.canAccess() && data.isSlotInSatchel(i) && hasShiftDown() &&
