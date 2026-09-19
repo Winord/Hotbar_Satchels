@@ -1,8 +1,8 @@
 # Hotbar Satchels
 
-A Fabric mod for Minecraft 26.1.X that adds equippable satchels providing extra hotbar storage.
+A Fabric mod for Minecraft 26.3 that adds equippable satchels providing extra hotbar storage.
 
-![Minecraft 26.1.X](https://img.shields.io/badge/Minecraft-26.1.X-green)
+![Minecraft 26.1.X](https://img.shields.io/badge/Minecraft-26.3-green)
 ![Fabric](https://img.shields.io/badge/Loader-Fabric-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow)
 
