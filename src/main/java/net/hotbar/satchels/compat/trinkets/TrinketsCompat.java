@@ -24,17 +24,16 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 
 /**
- * Trinkets Updated integration.
- * <p>
- * <b>Archived on 26.1.x</b> — {@code SatchelsCompat.TRINKETS.shouldLoad} is hardcoded
- * {@code false} due to an upstream slot desync bug; {@link net.hotbar.satchels.compat.ohmega.OhmegaCompat}
- * is the active replacement. This class stays fully working and dormant for re-enabling on
- * 26.2. See {@code satchels-port-decisions-26_1.md}.
+ * Trinkets Updated integration — the primary satchel accessory-slot compat on 26.1.x
+ * (Ohmega is the fallback when Trinkets isn't installed). See {@link net.hotbar.satchels.compat.SatchelsCompat}
+ * for the priority logic and the root-cause writeup of the desync bug that previously kept
+ * this archived (it was {@code InventoryMenuMixin}'s missing mixin priority, not Trinkets).
  * <p>
  * Equips/unequips the satchel through the {@code chest/satchel} trinket slot, prevents
  * unequipping while it has contents, plays the equip sound, drops the satchel's contents on
  * unequip, and tracks the dye tint per player. The slot is data-driven via
- * {@code data/trinkets/entities/player/chest/satchel.json} / {@code .../tags/item/chest/satchel.json}.
+ * {@code data/trinkets/entities/satchels.json} / {@code .../slots/chest/satchel.json} /
+ * {@code .../tags/item/chest/satchel.json}.
  * <p>
  * {@code TriState} here is {@code dev.yumi.commons.TriState} (a Trinkets Updated / Yumi
  * transitive dep), NOT {@code net.fabricmc.fabric.api.util.TriState}.

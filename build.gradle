@@ -85,12 +85,12 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 
-    // Archived for 26.1.x (upstream desync bug — see satchels-port-decisions-26_1.md §10).
-    // compileOnly/localRuntime only: not bundled, players don't need it installed.
+    // Primary satchel-accessory compat on 26.1.x — see SatchelsCompat's javadoc.
+    // compileOnly/localRuntime only: not bundled, players choose Trinkets and/or Ohmega.
     compileOnly "eu.pb4:trinkets:${trinkets_version}"
     localRuntime "eu.pb4:trinkets:${trinkets_version}"
 
-    // Active satchel-accessory compat on 26.1.x while Trinkets is archived.
+    // Fallback satchel-accessory compat when Trinkets isn't installed — see SatchelsCompat.
     compileOnly "maven.modrinth:ohmega:${ohmega_version}"
     localRuntime "maven.modrinth:ohmega:${ohmega_version}"
 
