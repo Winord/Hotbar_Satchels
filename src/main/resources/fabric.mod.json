@@ -43,6 +43,7 @@
     "java": ">=25"
   },
   "suggests": {
+    "trinkets_updated": "*",
     "ohmega": "*",
     "raised": "*",
     "jei": "*",

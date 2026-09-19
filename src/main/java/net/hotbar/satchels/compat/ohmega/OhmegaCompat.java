@@ -20,8 +20,14 @@ import java.util.Map;
 import java.util.WeakHashMap;
 
 /**
- * Ohmega integration, verified against {@code ohmega-1.5.21+26.1.2}. Active satchel-accessory
- * compat on 26.1.x while Trinkets is archived — see {@code satchels-port-decisions-26_1.md}.
+ * Ohmega integration, verified against {@code ohmega-1.5.21+26.1.2}. Was the active
+ * satchel-accessory compat while Trinkets was archived on 26.1.x — see
+ * {@code satchels-port-decisions-26_1.md}. On 26.2, Trinkets is primary again (see
+ * {@link net.hotbar.satchels.compat.trinkets.TrinketsCompat}); {@code SatchelsCompat.OHMEGA
+ * .shouldLoad} now only activates this module when {@code trinkets_updated} isn't loaded, so a
+ * player with both installed gets the Trinkets slot only — this class's
+ * {@link #initialize()} never runs in that case, and satchels are never bound as an Ohmega
+ * accessory at all.
  * <p>
  * <b>Class-loading gotcha — do not add {@code implements IAccessory} to this class, and do not
  * call {@link AccessoryHelper#bindAccessory} from anywhere on it.</b> {@code SatchelsCompat}'s

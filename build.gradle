@@ -85,12 +85,16 @@ dependencies {
     implementation "net.fabricmc:fabric-loader:${loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 
-    // Archived for 26.1.x (upstream desync bug — see satchels-port-decisions-26_1.md §10).
-    // compileOnly/localRuntime only: not bundled, players don't need it installed.
+    // Primary satchel-accessory compat on 26.2 — re-enabled after 4.1.0-rc.1+26.2 reworked the
+    // slot-id/visual-position split that caused the 26.1.x desync bug (see
+    // satchels-port-decisions-26_1.md §10 for that history, satchels-port-decisions-26_2.md §2
+    // for the fix verification status). compileOnly/localRuntime only: not bundled, players
+    // don't need it installed — Ohmega remains the fallback when Trinkets isn't present.
     compileOnly "eu.pb4:trinkets:${trinkets_version}"
     localRuntime "eu.pb4:trinkets:${trinkets_version}"
 
-    // Active satchel-accessory compat while Trinkets is archived.
+    // Fallback satchel-accessory compat, active only when Trinkets isn't installed (see
+    // SatchelsCompat).
     // Pinned as a local file, NOT "maven.modrinth:ohmega:${ohmega_version}" — Ohmega reuses the
     // same version_number "1.5.21" across its 26.1.2, 26.2 and 26.3 Fabric builds (confirmed via
     // CurseForge's file listing), so that coordinate is ambiguous and can silently resolve to the

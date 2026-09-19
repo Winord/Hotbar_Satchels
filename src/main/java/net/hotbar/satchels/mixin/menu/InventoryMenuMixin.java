@@ -13,7 +13,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-@Mixin(InventoryMenu.class)
+
+@Mixin(value = InventoryMenu.class, priority = 500)
 public abstract class InventoryMenuMixin extends RecipeBookMenu {
     public InventoryMenuMixin(MenuType<?> p_40115_, int p_40116_) {
         super(p_40115_, p_40116_);

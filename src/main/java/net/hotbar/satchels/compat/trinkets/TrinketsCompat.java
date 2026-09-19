@@ -18,6 +18,8 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.DyedItemColor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.Optional;
@@ -26,10 +28,12 @@ import java.util.WeakHashMap;
 /**
  * Trinkets Updated integration.
  * <p>
- * <b>Archived on 26.1.x</b> — {@code SatchelsCompat.TRINKETS.shouldLoad} is hardcoded
- * {@code false} due to an upstream slot desync bug; {@link net.hotbar.satchels.compat.ohmega.OhmegaCompat}
- * is the active replacement. This class stays fully working and dormant for re-enabling on
- * 26.2. See {@code satchels-port-decisions-26_1.md}.
+ * <b>Primary slot-compat on 26.2.</b> Archived for the whole 26.1.x cycle due to an upstream
+ * slot-id/visual-position desync bug (see {@code satchels-port-decisions-26_1.md}); re-enabled
+ * on 26.2 once {@code 4.1.0-rc.1+26.2} reworked that slot-id/visual-position split specifically
+ * to prevent the desync (see {@code satchels-port-decisions-26_2.md} §2 for the verification
+ * status). {@link net.hotbar.satchels.compat.ohmega.OhmegaCompat} is now only the fallback,
+ * active solely when Trinkets isn't installed — see {@code SatchelsCompat}.
  * <p>
  * Equips/unequips the satchel through the {@code chest/satchel} trinket slot, prevents
  * unequipping while it has contents, plays the equip sound, drops the satchel's contents on
@@ -45,6 +49,8 @@ public class TrinketsCompat implements CompatEntrypoint {
      * Must match the JSON files under {@code data/trinkets/}.
      */
     public static final String SLOT_ID = "chest/satchel";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger("Satchels/Trinkets");
 
     public Map<Player, Integer> satchelTints = new WeakHashMap<>();
 
@@ -207,6 +213,26 @@ public class TrinketsCompat implements CompatEntrypoint {
         }
 
         if (!satchelUnequipped) return;
+
+        // DIAGNOSTIC (temporary): re-verify against the live TrinketAttachment before trusting
+        // this event's `previous`/`current` args. If Trinkets fires a transient/incorrect
+        // "changed" event (e.g. during its own attachment resync) while the satchel is in fact
+        // still equipped, acting on the stale args here would wrongly dropAll() the satchel's
+        // contents — which looks exactly like "items inside the satchel vanish" to the player,
+        // even though nothing ever touched the satchel's own storage slots or their indices.
+        TrinketAttachment attachmentNow = TrinketsApi.getAttachment(player);
+        boolean stillEquippedNow = attachmentNow != null
+                && attachmentNow.findFirst(s -> s.is(ModTags.SATCHEL)).isPresent();
+        if (stillEquippedNow) {
+            LOGGER.warn(
+                    "Satchels/Trinkets: equipmentChangedMaybeSatchel reported an unequip for {} "
+                            + "(previous={}, current={}, slot={}) but a live TrinketAttachment "
+                            + "re-check still finds a satchel equipped — treating as a spurious "
+                            + "event and skipping dropAll(). If you see this log, please report it "
+                            + "together with what you were doing at the time.",
+                    player.getName().getString(), previous, current, slot);
+            return;
+        }
 
         satchelTints.remove(player);
 

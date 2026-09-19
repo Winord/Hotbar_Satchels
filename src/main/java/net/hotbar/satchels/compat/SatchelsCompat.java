@@ -18,24 +18,36 @@ import java.util.function.Supplier;
  * condition) at {@link #initialize()} time, and its {@link CompatEntrypoint} runs only if the
  * companion mod is actually present.
  * <p>
- * <b>Trinkets is archived on 26.1.x</b> — Trinkets Updated's {@code 4.0.x+26.1} line has an
- * upstream slot-id/visual-position desync bug (items placed into satchel storage slots land in
- * the wrong slot or become unremovable), fixed upstream only in {@code 4.1.0-rc.1+26.2}, not
- * backported to 26.1. {@code TRINKETS.shouldLoad} is hardcoded {@code false}; the entry and
- * {@link TrinketsCompat} stay in the codebase, dormant, so re-enabling is a one-line flip back
- * to the mod-presence check once Trinkets backports the fix or this mod ports to 26.2. See
- * {@code satchels-port-decisions-26_1.md}. {@link OhmegaCompat} is the active replacement.
+ * <b>Trinkets is the primary slot-compat on 26.2, Ohmega is the fallback.</b> Trinkets Updated's
+ * {@code 4.0.x+26.1} line had an upstream slot-id/visual-position desync bug (items placed into
+ * satchel storage slots landing in the wrong slot or becoming unremovable), which is why it was
+ * archived for the whole 26.1.x cycle in favor of {@link OhmegaCompat} — see
+ * {@code satchels-port-decisions-26_1.md}. {@code 4.1.0-rc.1+26.2} reworked the slot-id/visual-
+ * position split specifically to prevent that class of desync, so {@code TRINKETS.shouldLoad}
+ * now follows plain mod-presence like every other entry. {@code OHMEGA.shouldLoad} is
+ * conditioned on Trinkets' absence (mirrors {@code VANILLA}'s condition on Ohmega) so that when
+ * both are installed, Trinkets wins outright: {@link OhmegaCompat#initialize()} never runs, so
+ * {@code AccessoryHelper.bindAccessory} is never called and satchels simply aren't a bindable
+ * Ohmega accessory — no Ohmega slot to equip into, no double-equip path to guard elsewhere. See
+ * {@code satchels-port-decisions-26_2.md} §2 for the desync-fix verification status.
  * <p>
- * When {@code trinkets_updated} is present but archived, a startup warning is logged so server
- * admins aren't left wondering why their Trinkets satchel slot isn't showing up.
+ * When both {@code trinkets_updated} and {@code ohmega} are present, a startup notice is logged
+ * so server admins aren't left wondering why their Ohmega satchel slot isn't showing up.
+ * <p>
+ * <b>{@code VANILLA.shouldLoad} must exclude every accessory-slot compat's mod id, not just
+ * Ohmega's.</b> {@link net.hotbar.satchels.compat.vanilla.VanillaCompat} is its own mutually
+ * exclusive equip path (a dedicated {@code SatchelEquipmentSlot}) and conflicts with either
+ * Trinkets or Ohmega if both register equip callbacks at once. This was a one-mod check while
+ * Trinkets was hardcoded off; re-enabling Trinkets required adding its mod id here too — keep
+ * that in mind if a future accessory-slot compat is added.
  */
 public enum SatchelsCompat {
-    VANILLA("minecraft", VanillaCompat::new, () -> !FabricLoader.getInstance().isModLoaded("ohmega")),
-    // Archived for 26.1.x — see the class javadoc above. Flip back to
-    // `() -> !FabricLoader.getInstance().isModLoaded("ohmega")` (matching VANILLA's condition)
-    // once re-enabled.
-    TRINKETS("trinkets_updated", TrinketsCompat::new, () -> false),
-    OHMEGA("ohmega", OhmegaCompat::new),
+    VANILLA("minecraft", VanillaCompat::new, () ->
+            !FabricLoader.getInstance().isModLoaded("ohmega")
+                    && !FabricLoader.getInstance().isModLoaded("trinkets_updated")),
+    TRINKETS("trinkets_updated", TrinketsCompat::new),
+    // Fallback for when Trinkets isn't installed — see the class javadoc above.
+    OHMEGA("ohmega", OhmegaCompat::new, () -> !FabricLoader.getInstance().isModLoaded("trinkets_updated")),
     RAISED("raised", RaisedCompat::new);
 
     private static final Logger LOGGER = LoggerFactory.getLogger("Satchels/Compat");
@@ -68,10 +80,9 @@ public enum SatchelsCompat {
     }
 
     public static void initialize() {
-        if (TRINKETS.isLoaded) {
-            LOGGER.warn("Trinkets Updated detected, but its satchel integration is archived on "
-                    + "26.1.x pending an upstream slot-desync fix — "
-                    + "install Ohmega for satchel accessory-slot support instead.");
+        if (TRINKETS.isLoaded && OHMEGA.isLoaded) {
+            LOGGER.info("Both Trinkets Updated and Ohmega detected — Trinkets takes priority for "
+                    + "the satchel accessory slot, Ohmega's satchel slot integration stays inactive.");
         }
 
         for (SatchelsCompat compat : values()) {
