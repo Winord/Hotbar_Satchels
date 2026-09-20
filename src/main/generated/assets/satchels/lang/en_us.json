@@ -15,6 +15,8 @@
   "satchels.advancements.satchel_full.title": "Packed to the Brim",
   "satchels.configuration.allowed_menus": "Menus with Satchel Slots",
   "satchels.configuration.client": "Client",
+  "satchels.configuration.corner_menus": "Menus with Satchel Corner Pixel",
+  "satchels.configuration.corner_menus.tooltip": "Menus where the satchel row draws its 1 px corner that completes the panel border. Remove a menu if the pixel looks out of place there, for example with a resource pack that changes the menu texture. One menu ID per entry, for example minecraft:furnace.",
   "satchels.configuration.diamond_position": "Diamond Satchel Position",
   "satchels.configuration.diamond_position.tooltip": "The hotbar slot the Diamond Satchel starts from.",
   "satchels.configuration.gameplay": "Gameplay",

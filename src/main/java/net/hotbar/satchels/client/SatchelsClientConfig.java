@@ -9,6 +9,8 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
+import net.minecraft.resources.Identifier;
+import net.hotbar.satchels.SatchelsCommonConfig;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import net.hotbar.satchels.content.satchel.SatchelTier;
 import net.hotbar.satchels.network.packets.SatchelOffsetUpdatePacketC2S;
@@ -18,6 +20,11 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * Client-side settings, persisted directly via GSON to {@code config/satchels-client.json}
@@ -29,6 +36,12 @@ import java.nio.file.Path;
  * ({@link #getMaxSlotStart}). Netherite has no field: a 9-slot satchel always fills the whole
  * hotbar. Keeping the two fields independent means a tier switch never has to reconcile one
  * tier's start against another tier's slot count — see {@link #applyPersistedOffsetForTier}.
+ * <p>
+ * {@code corner_menus} is a second menu list, analogous to {@code allowed_menus} but purely
+ * visual and therefore client-side (a resource pack that re-textures a menu is a per-player
+ * thing, so the player needs to be able to change it without touching the server's config):
+ * it names the menus whose satchel row also draws the 1px corner "tuck" pixel — see
+ * {@link #isCornerEnabled}. Entries are bare {@code resource:location} ids, no offsets.
  */
 @Environment(EnvType.CLIENT)
 public class SatchelsClientConfig {
@@ -46,12 +59,56 @@ public class SatchelsClientConfig {
     private static boolean guiAnimation = true;
     private static boolean satchelHiddenInInventory = false;
 
-    private record Data(int golden_slot_start, int diamond_slot_start, boolean shift_swap, boolean satchel_layer, boolean gui_animation, boolean satchel_hidden_in_inventory) {
+    /** Raw {@code corner_menus} entries exactly as stored/shown in the config screen. */
+    private static List<String> cornerMenusRaw = new ArrayList<>();
+    /** Parsed form of {@link #cornerMenusRaw}, rebuilt by {@link #rebuildCornerLookup}. */
+    private static final Set<Identifier> cornerMenus = new HashSet<>();
+
+    /**
+     * Menus that get the corner pixel on a fresh install, and the config screen's "reset" value.
+     * Trim this list down to the panels whose texture actually has the notch. It only affects
+     * configs that have no {@code corner_menus} yet — an existing key in the json always wins.
+     */
+    private static final List<String> CORNER_MENU_DEFAULTS = List.of(
+            "minecraft:inventory",
+            "minecraft:crafting",
+            "minecraft:crafter_3x3",
+            "minecraft:generic_9x1",
+            "minecraft:generic_9x2",
+            "minecraft:generic_9x3",
+            "minecraft:generic_9x4",
+            "minecraft:generic_9x5",
+            "minecraft:generic_9x6",
+            "minecraft:shulker_box",
+            "minecraft:furnace",
+            "minecraft:smoker",
+            "minecraft:blast_furnace",
+            "minecraft:cartography_table",
+            "minecraft:smithing",
+            "minecraft:loom",
+            "minecraft:stonecutter",
+            "minecraft:enchantment",
+            "minecraft:anvil",
+            "minecraft:grindstone",
+            "minecraft:brewing_stand",
+            "minecraft:hopper",
+            "minecraft:generic_3x3",
+            "minecraft:horse",
+            "farmersdelight:cooking_pot",
+            "curios:curios_container",
+            "ohmega:accessory_menu",
+            "supplementaries:sack"
+    );
+
+    private record Data(int golden_slot_start, int diamond_slot_start, boolean shift_swap, boolean satchel_layer, boolean gui_animation, boolean satchel_hidden_in_inventory, List<String> corner_menus) {
     }
 
     /** Call from {@code SatchelsClient.onInitializeClient()}. Reads the config file, or creates it with defaults. */
     public static void load() {
-        if (Files.exists(FILE)) {
+        boolean configExisted = Files.exists(FILE);
+        boolean cornerMenusPresent = false;
+
+        if (configExisted) {
             try {
                 Data data = GSON.fromJson(Files.readString(FILE, StandardCharsets.UTF_8), Data.class);
                 if (data != null) {
@@ -65,11 +122,32 @@ public class SatchelsClientConfig {
                     satchelLayer = data.satchel_layer();
                     guiAnimation = data.gui_animation();
                     satchelHiddenInInventory = data.satchel_hidden_in_inventory();
+
+                    // null means the key is absent (config written by an older version); an
+                    // empty list is a deliberate "no menu gets the corner pixel" and is kept.
+                    if (data.corner_menus() != null) {
+                        cornerMenusRaw = new ArrayList<>(data.corner_menus());
+                        cornerMenusRaw.removeIf(Objects::isNull);
+                        cornerMenusPresent = true;
+                    }
                 }
             } catch (IOException | JsonParseException e) {
                 LOGGER.warn("satchels: failed to read satchels-client.json, using defaults", e);
             }
         }
+
+        // No corner_menus in the file yet. Fresh install (no config at all): the built-in
+        // CORNER_MENU_DEFAULTS. Upgrade (config exists, key missing): start from the menus the
+        // satchel is currently allowed in, so every panel keeps drawing the corner pixel exactly
+        // as before until the player trims the list. SatchelsCommonConfig.load() has already run
+        // by now — Fabric initialises all "main" entrypoints before any "client" one. An empty
+        // allowed list also falls back to the defaults, so a load-order surprise can never
+        // persist an empty corner_menus that silently disables the pixel.
+        if (!cornerMenusPresent) {
+            List<String> seed = configExisted ? SatchelsCommonConfig.getAllowedMenuIds() : List.of();
+            cornerMenusRaw = new ArrayList<>(seed.isEmpty() ? CORNER_MENU_DEFAULTS : seed);
+        }
+        rebuildCornerLookup();
 
         save();
     }
@@ -77,7 +155,7 @@ public class SatchelsClientConfig {
     public static void save() {
         try {
             Files.createDirectories(FILE.getParent());
-            Files.writeString(FILE, GSON.toJson(new Data(goldenSlotStart, diamondSlotStart, shiftSwap, satchelLayer, guiAnimation, satchelHiddenInInventory)), StandardCharsets.UTF_8);
+            Files.writeString(FILE, GSON.toJson(new Data(goldenSlotStart, diamondSlotStart, shiftSwap, satchelLayer, guiAnimation, satchelHiddenInInventory, cornerMenusRaw)), StandardCharsets.UTF_8);
         } catch (IOException e) {
             LOGGER.warn("satchels: failed to save satchels-client.json", e);
         }
@@ -97,6 +175,37 @@ public class SatchelsClientConfig {
 
     public static boolean isSatchelHiddenInInventory() {
         return satchelHiddenInInventory;
+    }
+
+    /**
+     * Whether the satchel row on the menu identified by {@code menuLocation} (the same key
+     * {@link SatchelMenuLocation#resolve} produces for {@code allowed_menus}) should also draw its
+     * corner "tuck" pixel — the second scissor pass, {@code
+     * ScreenWithSatchel#renderSatchelInventoryCorners}. Independent of {@code allowed_menus}: a
+     * menu must be allowed <i>and</i> listed in {@code corner_menus} to get the pixel.
+     */
+    public static boolean isCornerEnabled(Identifier menuLocation) {
+        return cornerMenus.contains(menuLocation);
+    }
+
+    private static void rebuildCornerLookup() {
+        cornerMenus.clear();
+
+        for (String entry : cornerMenusRaw) {
+            if (entry == null) continue;
+
+            String trimmed = entry.trim();
+            // Cloth's list widget happily keeps a blank row, and Identifier.tryParse("") would
+            // accept it as "minecraft:" — skip silently instead of warning about nothing.
+            if (trimmed.isEmpty()) continue;
+
+            Identifier location = Identifier.tryParse(trimmed);
+            if (location == null) {
+                LOGGER.warn("satchels: invalid entry in corner_menus, skipping: '{}'", entry);
+                continue;
+            }
+            cornerMenus.add(location);
+        }
     }
 
     // region Used by the Cloth Config GUI screen (SatchelsConfigScreen, via Mod Menu)
@@ -122,6 +231,22 @@ public class SatchelsClientConfig {
      */
     public static void setSatchelHiddenInInventory(boolean value) {
         satchelHiddenInInventory = value;
+        save();
+    }
+
+    public static List<String> getCornerMenusRaw() {
+        return new ArrayList<>(cornerMenusRaw);
+    }
+
+    /** The config screen's "reset" value for {@code corner_menus}: {@link #CORNER_MENU_DEFAULTS}. */
+    public static List<String> getDefaultCornerMenus() {
+        return CORNER_MENU_DEFAULTS;
+    }
+
+    /** Accepts a new list of raw entries, validates them, rebuilds the lookup set and saves. */
+    public static void setCornerMenusRaw(List<String> value) {
+        cornerMenusRaw = new ArrayList<>(value);
+        rebuildCornerLookup();
         save();
     }
     // endregion
