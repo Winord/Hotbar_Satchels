@@ -38,7 +38,7 @@ public class SatchelsLanguageProvider extends FabricLanguageProvider {
 
         // Advancement titles / descriptions (SatchelsAdvancementProvider).
         translationBuilder.add("satchels.advancements.root.title", "Satchels");
-        translationBuilder.add("satchels.advancements.root.description", "A new way to carry your essentials.");
+        translationBuilder.add("satchels.advancements.root.description", "A new way to carry your essentials");
         translationBuilder.add("satchels.advancements.golden.title", "Very Convenient");
         translationBuilder.add("satchels.advancements.golden.description", "This is not just a bag, it is a faithful companion");
         translationBuilder.add("satchels.advancements.diamond.title", "Double the size?!");
