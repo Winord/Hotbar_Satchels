@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "satchels:satchel_diamond"
+        "recipes": "satchels:satchel_diamond"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

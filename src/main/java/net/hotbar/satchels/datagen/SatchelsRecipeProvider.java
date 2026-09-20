@@ -5,6 +5,8 @@ import net.fabricmc.fabric.api.datagen.v1.provider.FabricRecipeProvider;
 import net.fabricmc.fabric.api.tag.convention.v2.ConventionalItemTags;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.data.worldgen.BootstrapContext;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.data.recipes.RecipeBuilder;
 import net.minecraft.data.recipes.RecipeCategory;
@@ -45,11 +47,19 @@ import java.util.concurrent.CompletableFuture;
  * {@code .save(output)} / {@code output.accept(...)} auto-generates an unlock advancement
  * ({@code advancement/recipes/<category>/<id>.json}) for every recipe.
  * <p>
- * {@code FabricRecipeProvider}'s hook is {@code createRecipeProvider(HolderLookup.Provider,
- * RecipeOutput)}, not an override of vanilla's {@code buildRecipes(RecipeOutput)} — it must
- * return a fresh vanilla {@code RecipeProvider} instance, whose own no-arg {@code buildRecipes()}
- * is what actually runs. All per-recipe logic below lives in that anonymous subclass, which is
- * also why instance methods like {@code has(...)} resolve here.
+ * 26.3: recipes and their auto-generated unlock advancements are now data-driven registries,
+ * bootstrapped the same way worldgen registries are. {@code FabricRecipeProvider}'s hook is
+ * {@code createRecipeProvider(HolderLookup.Provider, BootstrapContext<Recipe<?>>,
+ * BootstrapContext<Advancement>)} — still not an override of vanilla's
+ * {@code buildRecipes(RecipeOutput)}. It must return a fresh vanilla {@code RecipeProvider}
+ * instance (whose constructor now itself takes the two {@code BootstrapContext}s instead of a
+ * {@code HolderLookup.Provider}+{@code RecipeOutput} pair), whose own no-arg
+ * {@code buildRecipes()} is what actually runs. {@code RecipeProvider} still exposes a
+ * {@code protected final RecipeOutput output} field internally (derived from the recipe
+ * {@code BootstrapContext}) — {@code .save(output)} below refers to that inherited field, not
+ * to a method parameter, so nothing in the recipe-building bodies below had to change. All
+ * per-recipe logic lives in that anonymous subclass, which is also why instance methods like
+ * {@code has(...)} resolve here.
  */
 public class SatchelsRecipeProvider extends FabricRecipeProvider {
     public SatchelsRecipeProvider(FabricPackOutput output, CompletableFuture<HolderLookup.Provider> registriesFuture) {
@@ -57,8 +67,12 @@ public class SatchelsRecipeProvider extends FabricRecipeProvider {
     }
 
     @Override
-    protected @NotNull RecipeProvider createRecipeProvider(@NotNull HolderLookup.Provider registries, @NotNull RecipeOutput output) {
-        return new RecipeProvider(registries, output) {
+    protected @NotNull RecipeProvider createRecipeProvider(
+            @NotNull HolderLookup.Provider registries,
+            @NotNull BootstrapContext<Recipe<?>> recipeOutput,
+            @NotNull BootstrapContext<Advancement> advancementOutput
+    ) {
+        return new RecipeProvider(recipeOutput, advancementOutput) {
             @Override
             public void buildRecipes() {
                 this.shaped(RecipeCategory.TOOLS, ModItems.SATCHEL_GOLDEN)
@@ -69,7 +83,7 @@ public class SatchelsRecipeProvider extends FabricRecipeProvider {
                         .define('l', ConventionalItemTags.LEATHERS)
                         .define('g', ConventionalItemTags.GOLD_INGOTS)
                         .unlockedBy("has_gold", has(ConventionalItemTags.GOLD_INGOTS))
-                        .save(output);
+                        .save(this.output);
 
                 // Dyeing recipes are per-item, not tag-driven (same as leather_helmet_dyed.json
                 // etc.) — being in the dyeable tag alone gives no crafting recipe by itself.
@@ -78,7 +92,7 @@ public class SatchelsRecipeProvider extends FabricRecipeProvider {
                 }
 
                 satchelUpgradeRecipe(
-                        output, Satchels.at("satchel_diamond"), RecipeCategory.TOOLS, ModItems.SATCHEL_DIAMOND,
+                        this.output, Satchels.at("satchel_diamond"), RecipeCategory.TOOLS, ModItems.SATCHEL_DIAMOND,
                         List.of(" d ", "dgd", " d "),
                         Map.of(
                                 'd', Ingredient.of(registries.lookupOrThrow(Registries.ITEM).getOrThrow(ConventionalItemTags.DIAMOND_GEMS)),
@@ -123,8 +137,6 @@ public class SatchelsRecipeProvider extends FabricRecipeProvider {
         };
     }
 
-    // DataProvider#getName() is still abstract in 26.1 and FabricRecipeProvider
-    // doesn't provide a default — every other datagen provider in this codebase overrides it too.
     @Override
     public @NotNull String getName() {
         return "Hotbar Satchels Recipes";

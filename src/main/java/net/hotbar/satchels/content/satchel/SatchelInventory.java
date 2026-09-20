@@ -6,6 +6,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.util.Prediction;
 import net.minecraft.world.Container;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
@@ -213,10 +214,16 @@ public class SatchelInventory implements Container, NbtSerializable<CompoundTag>
     }
 
     public void dropAll(boolean died) {
+        // 26.3: LivingEntity#drop's 3rd param changed from `boolean traceItem` to a required
+        // net.minecraft.util.Prediction (PREDICTED | SERVER_ONLY) — verified directly against the
+        // 26.3 bytecode. Every dropAll() call site is a server-driven reaction (death, inventory
+        // overflow, accessory unequip), never the client-predicted Q-drop input path, so
+        // SERVER_ONLY applies regardless of `died`, matching vanilla's own server-driven
+        // give-or-drop call sites (advancement rewards, beacon/merchant payout).
         for (int i = 0; i < items.size(); i++) {
             ItemStack itemStack = items.get(i);
             if (!itemStack.isEmpty()) {
-                this.parent.getPlayer().drop(itemStack, died, !died);
+                this.parent.getPlayer().drop(itemStack, died, Prediction.SERVER_ONLY);
                 items.set(i, ItemStack.EMPTY);
             }
         }

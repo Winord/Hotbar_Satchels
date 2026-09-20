@@ -7,6 +7,7 @@ import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.util.Prediction;
 import net.hotbar.satchels.network.packets.ToggleSatchelPacketC2S;
 import net.hotbar.satchels.content.satchel.SatchelData;
 import net.hotbar.satchels.content.satchel.SatchelInventory;
@@ -63,8 +64,8 @@ public abstract class InventoryMixin {
         return original;
     }
 
-    @Inject(method = "placeItemBackInInventory(Lnet/minecraft/world/item/ItemStack;Z)V", at = @At("HEAD"), cancellable = true)
-    public void satchels$placeItemBackInInventory(ItemStack stack, boolean update, CallbackInfo ci) {
+    @Inject(method = "placeItemBackInInventory(Lnet/minecraft/world/item/ItemStack;ZLnet/minecraft/util/Prediction;)V", at = @At("HEAD"), cancellable = true)
+    public void satchels$placeItemBackInInventory(ItemStack stack, boolean update, Prediction prediction, CallbackInfo ci) {
         SatchelData satchelData = SatchelData.get(player);
         if (!satchelData.canAccess()) return;
         if (satchelData.isActive() || !update) {
@@ -86,19 +87,15 @@ public abstract class InventoryMixin {
         }
     }
 
-    // Injects at RETURN and adds the satchel's own clearing on top of whatever vanilla already
-    // cleared, rather than wrapping one of clearOrCountMatchingItems' internal calls by ordinal
-    // — more resilient to that method's internal call structure changing.
     @Inject(method = "clearOrCountMatchingItems", at = @At("RETURN"), cancellable = true)
-    public void satchels$clearOrCountMatchingItems(Predicate<ItemStack> predicate, int i, Container container, CallbackInfoReturnable<Integer> cir) {
+    public void satchels$clearOrCountMatchingItems(Predicate<ItemStack> predicate, boolean simulate, int i, Container container, CallbackInfoReturnable<Integer> cir) {
         int cleared = cir.getReturnValue();
-        boolean bl = i == 0;
         SatchelData satchelData = SatchelData.get(player);
 
-        int extraCleared = ContainerHelper.clearOrCountMatchingItems(satchelData.getSatchelInventory(), predicate, i - cleared, bl);
+        int extraCleared = ContainerHelper.clearOrCountMatchingItems(satchelData.getSatchelInventory(), predicate, i - cleared, simulate);
 
         ItemStack satchelSlot = satchelData.getSatchelSlotStack();
-        extraCleared += ContainerHelper.clearOrCountMatchingItems(satchelSlot, predicate, i - cleared - extraCleared, bl);
+        extraCleared += ContainerHelper.clearOrCountMatchingItems(satchelSlot, predicate, i - cleared - extraCleared, simulate);
 
         satchelData.setSatchelSlotStack(satchelSlot);
         if (satchelSlot.isEmpty()) {

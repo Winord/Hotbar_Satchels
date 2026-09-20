@@ -4,7 +4,7 @@ import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.minecraft.world.level.storage.loot.LootPool;
 import net.minecraft.world.level.storage.loot.entries.EmptyLootItem;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
-import net.minecraft.world.level.storage.loot.providers.number.ConstantValue;
+import net.minecraft.world.level.storage.loot.providers.number.ints.ContextIntProviders;
 import net.minecraft.world.level.storage.loot.BuiltInLootTables;
 import net.minecraft.world.level.storage.loot.functions.SetItemCountFunction;
 import net.hotbar.satchels.ModItems;
@@ -31,12 +31,16 @@ public class SatchelsLootTables {
             // pool with just the satchel in it (which would make it drop every single time).
             // Same shape as vanilla's own third pool in this table (empty vs. armor-trim
             // template), just with our own weighting.
+            // 26.3: the loot number-provider system was reworked — ConstantValue (float-based,
+            // net.minecraft.world.level.storage.loot.providers.number) is gone; setRolls/setCount
+            // now take a Holder<ContextIntProvider>, produced directly by
+            // ContextIntProviders.exactly(int) (no extra Holder wrapping needed).
             tableBuilder.withPool(
                     LootPool.lootPool()
-                            .setRolls(ConstantValue.exactly(1))
+                            .setRolls(ContextIntProviders.exactly(1))
                             .add(
                                     LootItem.lootTableItem(ModItems.SATCHEL_GOLDEN)
-                                            .apply(SetItemCountFunction.setCount(ConstantValue.exactly(1)))
+                                            .apply(SetItemCountFunction.setCount(ContextIntProviders.exactly(1)))
                                             .setWeight(1)
                             )
                             .add(EmptyLootItem.emptyItem().setWeight(7))

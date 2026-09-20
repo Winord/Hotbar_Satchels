@@ -249,7 +249,8 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
      * bypassing {@code getHoveredSlot} entirely — the target satchel slot is encoded in
      * {@code pMouseButton}, so it's resolved separately here.
      */
-    @Inject(method = "slotClicked", at = @At("HEAD"), cancellable = true)
+
+    @Inject(method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", at = @At("HEAD"), cancellable = true)
     public void satchels$blockHiddenSatchelSlotClicks(Slot pSlot, int pSlotId, int pMouseButton, ContainerInput pType, CallbackInfo ci) {
         if (!satchels$isSatchelInteractionBlockedHere()) return;
 

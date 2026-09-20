@@ -13,7 +13,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "satchels:satchel_netherite_smithing"
+        "recipes": "satchels:satchel_netherite_smithing"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

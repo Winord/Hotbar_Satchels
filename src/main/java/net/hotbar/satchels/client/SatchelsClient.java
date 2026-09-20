@@ -31,7 +31,6 @@ import net.hotbar.satchels.network.packets.SatchelInventorySyncPacketS2C;
 import net.hotbar.satchels.network.packets.SatchelSlotUpdatePacketS2C;
 import net.hotbar.satchels.network.packets.SatchelStatusPacketS2C;
 import net.hotbar.satchels.network.packets.ToggleSatchelPacketC2S;
-import org.lwjgl.glfw.GLFW;
 
 /**
  * Client mod entry point: keybinding, HUD overlay, satchel render layer, item color handler,
@@ -49,8 +48,13 @@ import org.lwjgl.glfw.GLFW;
  * clicks to {@code consumeClick()} while no {@code Screen} is open.
  */
 public class SatchelsClient implements ClientModInitializer {
+    // 26.3: GLFW was replaced by SDL3 (org.lwjgl.glfw.GLFW is no longer on the classpath at all).
+    // InputConstants.Type.KEYSYM was renamed to KEYBOARD, and the key code is now taken from
+    // InputConstants.KEY_V directly (an SDL-scancode-based constant owned by Minecraft's own
+    // InputConstants, not a GLFW/SDL library constant) instead of GLFW.GLFW_KEY_V. This still
+    // refers to the physical V key position, independent of the platform input backend.
     public static final KeyMapping KEYMAPPING_TOGGLE_SATCHEL = new KeyMapping(
-            "key.satchels.toggle_satchel", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, KeyMapping.Category.INVENTORY
+            "key.satchels.toggle_satchel", InputConstants.Type.KEYBOARD, InputConstants.KEY_V, KeyMapping.Category.INVENTORY
     );
 
     @Override
