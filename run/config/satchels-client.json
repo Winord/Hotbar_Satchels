@@ -1,0 +1,8 @@
+{
+  "golden_slot_start": 1,
+  "diamond_slot_start": 1,
+  "shift_swap": true,
+  "satchel_layer": true,
+  "gui_animation": true,
+  "satchel_hidden_in_inventory": false
+}

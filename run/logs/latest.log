@@ -1,0 +1,132 @@
+[14:46:44] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 26.3 with Fabric Loader 0.19.5
+[14:46:44] [main/INFO] (FabricLoader/Mappings) Mappings not present!
+[14:46:45] [main/WARN] (FabricLoader/Resolution) Warnings were found!
+ - Mod 'Forge Config API Port' (forgeconfigapiport) 26.3.0 recommends any version of modmenu, which is missing!
+	 - You should install any version of modmenu for the optimal experience.
+[14:46:45] [main/INFO] (FabricLoader) Loading 64 mods:
+	- cloth-basic-math 0.6.1
+	- cloth-config 26.3.158
+	- fabric-api 0.160.6+26.3
+	- fabric-api-base 2.0.6+fcdff87f5d
+	- fabric-api-lookup-api-v1 2.0.24+3434d6d95d
+	- fabric-biome-api-v1 20.0.9+74ed1ea55d
+	- fabric-block-api-v1 3.1.0+0ae6f9115d
+	- fabric-block-getter-api-v2 2.0.9+3434d6d95d
+	- fabric-client-gametest-api-v1 6.0.7+4be74c3f5d
+	- fabric-command-api-v2 3.1.2+fcdff87f5d
+	- fabric-content-registries-v0 15.0.4+74ed1ea55d
+	- fabric-convention-tags-v2 4.10.2+5a4e5fc65d
+	- fabric-crash-report-info-v1 1.0.7+fcdff87f5d
+	- fabric-creative-tab-api-v1 5.0.21+fcdff87f5d
+	- fabric-data-attachment-api-v1 2.2.30+3434d6d95d
+	- fabric-data-generation-api-v1 27.2.2+b28e9d205d
+	- fabric-debug-api-v1 1.0.4+3434d6d95d
+	- fabric-dimensions-v1 5.1.19+47f74c985d
+	- fabric-entity-events-v1 6.0.4+3434d6d95d
+	- fabric-events-interaction-v0 5.3.6+3434d6d95d
+	- fabric-game-rule-api-v1 4.0.10+3434d6d95d
+	- fabric-gametest-api-v1 4.0.32+3434d6d95d
+	- fabric-item-api-v1 14.7.0+cf6bc2db5d
+	- fabric-key-mapping-api-v1 2.0.8+3434d6d95d
+	- fabric-lifecycle-events-v1 4.1.9+ffef5f675d
+	- fabric-loot-api-v3 4.0.8+4068fd645d
+	- fabric-menu-api-v1 2.0.27+ed66f0a35d
+	- fabric-message-api-v1 7.0.10+3434d6d95d
+	- fabric-model-loading-api-v1 8.0.34+fcdff87f5d
+	- fabric-networking-api-v1 6.3.8+fcdff87f5d
+	- fabric-object-builder-api-v1 24.1.9+3434d6d95d
+	- fabric-particles-v1 5.0.24+3434d6d95d
+	- fabric-permission-api-v1 1.0.8+fcdff87f5d
+	- fabric-recipe-api-v1 10.0.8+fcdff87f5d
+	- fabric-registry-sync-v0 8.0.1+fcdff87f5d
+	- fabric-renderer-api-v1 17.0.14+2ce735b85d
+	- fabric-renderer-indigo 9.1.22+b9d63e335d
+	- fabric-rendering-fluids-v1 6.0.6+3434d6d95d
+	- fabric-rendering-v1 27.0.14+901a437c5d
+	- fabric-resource-conditions-api-v1 6.1.5+3434d6d95d
+	- fabric-resource-loader-v0 3.3.26+4fc5413f5d
+	- fabric-resource-loader-v1 3.0.4+fcdff87f5d
+	- fabric-screen-api-v1 5.2.3+1087e13e5d
+	- fabric-serialization-api-v1 2.0.7+74ed1ea55d
+	- fabric-sound-api-v1 2.0.7+3434d6d95d
+	- fabric-tag-api-v1 2.1.10+fcdff87f5d
+	- fabric-transfer-api-v1 8.0.25+fcdff87f5d
+	- fabric-transitive-access-wideners-v1 8.1.16+52268a0e5d
+	- fabricloader 0.19.5
+	- forgeconfigapiport 26.3.0
+	   |-- com_electronwill_night-config_core 3.8.4
+	   \-- com_electronwill_night-config_toml 3.8.4
+	- java 25
+	- jei 31.0.0.11
+	- minecraft 26.3
+	- mixinextras 0.5.5
+	- ohmega 1.5.21
+	- raised 5.1.2
+	- satchels 1.2
+	- trinkets_updated 4.2.0+26.3
+	- yumi_commons_collections 2.0.0
+	- yumi_commons_core 2.0.0
+	- yumi_commons_event 2.0.0
+	- yumi_mc_core 1.1.3+26.1
+[14:46:45] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/C:/Users/Winord-PC/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.4+mixin.0.8.7/5f66cc9f59b8efaa942155a3d5a30599bf6640dd/sponge-mixin-0.17.4+mixin.0.8.7.jar Service=Knot/Fabric Env=CLIENT
+[14:46:45] [main/ERROR] (FabricLoader/Mixin) Invalid REFMAP JSON in : org.spongepowered.include.com.google.gson.JsonSyntaxException java.lang.IllegalStateException: Expected BEGIN_OBJECT but was STRING at line 1 column 1
+[14:46:45] [main/WARN] (FabricLoader/Mixin) Reference map '' for satchels.mixins.json could not be read. If this is a development environment you can ignore this message
+[14:46:45] [main/WARN] (FabricLoader/Mixin) Reference map 'raised.refmap.json' for raised.mixins.json could not be read. If this is a development environment you can ignore this message
+[14:46:46] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.5).
+[14:46:47] [Datafixer Bootstrap #0/INFO] (Minecraft) 307 Datafixer optimizations took 337 milliseconds
+[14:46:51] [Render thread/INFO] (Minecraft) Environment: Environment[discoveryUrl=https://discovery.minecraftservices.com/minecraft/client, name=PROD]
+[14:46:51] [Render thread/INFO] (Minecraft) Setting user: Player70
+[14:46:51] [Render thread/INFO] (Satchels/Compat) Both Trinkets Updated and Ohmega detected — Trinkets takes priority for the satchel accessory slot, Ohmega's satchel slot integration stays inactive.
+[14:46:51] [Render thread/INFO] (raised) Registering Raised layer 'satchels:satchel_hotbar'
+[14:46:51] [Render thread/INFO] (raised) Loading Raised config...
+[14:46:51] [Render thread/INFO] (Ohmega) Successfully loaded 7 services
+[14:46:51] [Download-2/ERROR] (Minecraft) Failed to fetch user properties
+com.mojang.authlib.exceptions.InvalidCredentialsException: Status: 401
+	at knot//com.mojang.authlib.exceptions.MinecraftClientHttpException.toAuthenticationException(MinecraftClientHttpException.java:70)
+	at knot//com.mojang.authlib.services.MinecraftServicesUserApiService.fetchProperties(MinecraftServicesUserApiService.java:168)
+	at knot//net.minecraft.client.Minecraft.lambda$new$1(Minecraft.java:451)
+	at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1814)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1090)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:614)
+	at java.base/java.lang.Thread.run(Thread.java:1447)
+Caused by: MinecraftClientHttpException[type=HTTP_ERROR, status=401, response=ErrorResponse[path=/player/attributes, error=null, errorMessage=null, details=null]]
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.buildHttpException(MinecraftClient.java:170)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.readServiceResponse(MinecraftClient.java:147)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.getWithEtag(MinecraftClient.java:81)
+	at knot//com.mojang.authlib.minecraft.client.MinecraftClient.get(MinecraftClient.java:65)
+	at knot//com.mojang.authlib.services.MinecraftServicesUserApiService.fetchProperties(MinecraftServicesUserApiService.java:118)
+	... 5 more
+[14:46:51] [Render thread/INFO] (PluginCaller) Sending ConfigManager...
+[14:46:51] [Render thread/INFO] (PluginCaller) Sending ConfigManager took 1.158 milliseconds
+[14:46:51] [Render thread/ERROR] (FabricLoader/Mixin) Mixin apply for mod raised failed raised.mixins.json:minecraft.client.gui.GuiGraphicsExtractorInvoker from mod raised -> net.minecraft.client.gui.GuiGraphicsExtractor: org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException No candidates were found matching innerBlit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIIIFFFFI)V in net/minecraft/client/gui/GuiGraphicsExtractor for raised.mixins.json:minecraft.client.gui.GuiGraphicsExtractorInvoker from mod raised->@Invoker[METHOD_PROXY]::invokeInnerBlit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIIIFFFFI)V [ACCESSOR Applicator Phase -> raised.mixins.json:minecraft.client.gui.GuiGraphicsExtractorInvoker from mod raised -> Apply Accessors ->  -> Locate -> raised.mixins.json:minecraft.client.gui.GuiGraphicsExtractorInvoker from mod raised->@Invoker[METHOD_PROXY]::invokeInnerBlit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIIIFFFFI)V]
+org.spongepowered.asm.mixin.gen.throwables.InvalidAccessorException: No candidates were found matching innerBlit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIIIFFFFI)V in net/minecraft/client/gui/GuiGraphicsExtractor for raised.mixins.json:minecraft.client.gui.GuiGraphicsExtractorInvoker from mod raised->@Invoker[METHOD_PROXY]::invokeInnerBlit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIIIFFFFI)V [ACCESSOR Applicator Phase -> raised.mixins.json:minecraft.client.gui.GuiGraphicsExtractorInvoker from mod raised -> Apply Accessors ->  -> Locate -> raised.mixins.json:minecraft.client.gui.GuiGraphicsExtractorInvoker from mod raised->@Invoker[METHOD_PROXY]::invokeInnerBlit(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIIIFFFFI)V]
+	at org.spongepowered.asm.mixin.gen.InvokerInfo.findTargetMethod(InvokerInfo.java:121)
+	at org.spongepowered.asm.mixin.gen.InvokerInfo.locate(InvokerInfo.java:103)
+	at org.spongepowered.asm.mixin.transformer.MixinTargetContext.generateAccessors(MixinTargetContext.java:1504)
+	at org.spongepowered.asm.mixin.transformer.MixinApplicatorStandard.applyAccessors(MixinApplicatorStandard.java:841)
+	at org.spongepowered.asm.mixin.transformer.MixinApplicatorStandard.lambda$runApplicatorPass$5(MixinApplicatorStandard.java:343)
+	at org.spongepowered.asm.mixin.transformer.MixinApplicatorStandard.processMixins(MixinApplicatorStandard.java:381)
+	at org.spongepowered.asm.mixin.transformer.MixinApplicatorStandard.runApplicatorPass(MixinApplicatorStandard.java:341)
+	at org.spongepowered.asm.mixin.transformer.MixinApplicatorStandard.apply(MixinApplicatorStandard.java:240)
+	at org.spongepowered.asm.mixin.transformer.TargetClassContext.apply(TargetClassContext.java:437)
+	at org.spongepowered.asm.mixin.transformer.TargetClassContext.applyMixins(TargetClassContext.java:418)
+	at org.spongepowered.asm.mixin.transformer.MixinProcessor.applyMixins(MixinProcessor.java:351)
+	at org.spongepowered.asm.mixin.transformer.MixinTransformer.transformClass(MixinTransformer.java:237)
+	at org.spongepowered.asm.mixin.transformer.MixinTransformer.transformClassBytes(MixinTransformer.java:202)
+	at net.fabricmc.loader.impl.launch.knot.KnotClassDelegate.getPostMixinClassByteArray(KnotClassDelegate.java:435)
+	at net.fabricmc.loader.impl.launch.knot.KnotClassDelegate.tryLoadClass(KnotClassDelegate.java:336)
+	at net.fabricmc.loader.impl.launch.knot.KnotClassDelegate.loadClass(KnotClassDelegate.java:231)
+	at net.fabricmc.loader.impl.launch.knot.KnotClassLoader.loadClass(KnotClassLoader.java:119)
+	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:490)
+	at knot//net.hotbar.satchels.client.SatchelsClient.registerOverlays(SatchelsClient.java:99)
+	at knot//net.hotbar.satchels.client.SatchelsClient.onInitializeClient(SatchelsClient.java:76)
+	at net.fabricmc.loader.impl.FabricLoaderImpl.invokeEntrypoints(FabricLoaderImpl.java:409)
+	at net.fabricmc.loader.impl.game.minecraft.Hooks.startClient(Hooks.java:53)
+	at knot//net.minecraft.client.Minecraft.<init>(Minecraft.java:469)
+	at knot//net.minecraft.client.main.Main.main(Main.java:278)
+	at net.fabricmc.loader.impl.game.minecraft.MinecraftGameProvider.launch(MinecraftGameProvider.java:517)
+	at net.fabricmc.loader.impl.launch.knot.Knot.launch(Knot.java:72)
+	at net.fabricmc.loader.impl.launch.knot.KnotClient.main(KnotClient.java:23)
+	at net.fabricmc.devlaunchinjector.Main.main(Main.java:86)
+[14:46:51] [Render thread/INFO] (Indigo) [Indigo] Registering Indigo renderer!
+[14:46:51] [Render thread/INFO] (Ohmega) Successfully loaded 2 client services

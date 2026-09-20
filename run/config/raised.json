@@ -1,0 +1,18 @@
+{
+  "layers": {
+    "satchels:satchel_hotbar": {
+      "displacement": {
+        "x": 0,
+        "y": 0
+      },
+      "direction": {
+        "x": "NONE",
+        "y": "NONE"
+      },
+      "sync": "satchels:satchel_hotbar"
+    }
+  },
+  "resource": {
+    "texture": "AUTO"
+  }
+}

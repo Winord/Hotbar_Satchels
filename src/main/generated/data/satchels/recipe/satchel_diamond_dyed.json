@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_dye",
+  "dye": "#minecraft:dyes",
+  "group": "dyed_satchel",
+  "result": {
+    "id": "satchels:satchel_diamond"
+  },
+  "target": "satchels:satchel_diamond"
+}
