@@ -118,6 +118,16 @@ public class SatchelsCommonConfig {
         return overlayOffsets.getOrDefault(menuLocation, new Tuple<>(0, 0));
     }
 
+    /**
+     * Bare {@code resource:location} ids of every currently allowed menu (offsets stripped), in
+     * config order. Used by {@code SatchelsClientConfig} to seed its {@code corner_menus} list
+     * when an existing config predates that option, so an upgraded install keeps its current
+     * corner-pixel behaviour.
+     */
+    public static List<String> getAllowedMenuIds() {
+        return allowed.stream().map(Identifier::toString).distinct().toList();
+    }
+
     // region Used by the Cloth Config GUI screen (SatchelsConfigScreen, via Mod Menu)
     public static List<String> getAllowedMenusRaw() {
         return List.copyOf(allowedMenusRaw);

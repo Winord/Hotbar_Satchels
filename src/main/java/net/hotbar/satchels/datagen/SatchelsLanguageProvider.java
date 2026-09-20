@@ -61,6 +61,8 @@ public class SatchelsLanguageProvider extends FabricLanguageProvider {
         translationBuilder.add("satchels.configuration.gui_animation", "GUI/HUD Animation");
         translationBuilder.add("satchels.configuration.satchel_layer", "Render Satchel on Players");
         translationBuilder.add("satchels.configuration.shift_swap", "Satchel Slot Swapping");
+        translationBuilder.add("satchels.configuration.corner_menus", "Menus with Satchel Corner Pixel");
+        translationBuilder.add("satchels.configuration.corner_menus.tooltip", "Menus where the satchel row draws its 1 px corner that completes the panel border. Remove a menu if the pixel looks out of place there, for example with a resource pack that changes the menu texture. One menu ID per entry, for example minecraft:furnace.");
 
         // Per-tier hotbar slot-start sliders.
         // Netherite has no entry — it always occupies the full hotbar.

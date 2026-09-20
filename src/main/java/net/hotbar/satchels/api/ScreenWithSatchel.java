@@ -130,6 +130,12 @@ public class ScreenWithSatchel {
      * Only the left corner is drawn — the mirrored top-right pixel has no matching notch on the
      * panels this mod targets.
      * <p>
+     * <b>Per-menu opt-in is the caller's job.</b> This method has no menu gate of its own;
+     * {@code AbstractContainerScreenMixin} only calls it for menus listed in the client's
+     * {@code corner_menus} ({@code SatchelsClientConfig#isCornerEnabled}), since not every panel
+     * has a notch there and a resource pack can change that. Any other caller keeps the old
+     * always-drawn behaviour.
+     * <p>
      * <b>Only correct at the hotbar's own left edge</b> (hotbarOffset == 0). Past a shifted
      * slot-start the pixel no longer lands on a real notch and would bleed onto the Survival
      * GUI's plain hotbar border instead — {@link #satchels$isCornerSafeAtPosition} gates the

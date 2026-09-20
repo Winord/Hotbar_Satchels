@@ -22,8 +22,9 @@ import java.util.ArrayList;
  *       Persisted to {@code config/satchels-common.json} via {@code save()} in the
  *       save-callback.</li>
  *   <li><b>Client</b> ({@link SatchelsClientConfig}): shift-swap, satchel layer, GUI animation
- *       toggles, and the Golden/Diamond per-tier hotbar slot-start sliders. Each setter already
- *       calls {@code save()} internally.</li>
+ *       toggles, the Golden/Diamond per-tier hotbar slot-start sliders, and the
+ *       {@code corner_menus} list (which menus get the satchel row's 1px corner pixel). Each
+ *       setter already calls {@code save()} internally.</li>
  * </ul>
  * <p>
  * Persistence is handled entirely by the two config classes' own GSON round-trips — Cloth
@@ -119,6 +120,18 @@ public final class SatchelsConfigScreen {
                 "satchels.configuration.golden_position", "satchels.configuration.golden_position.tooltip"));
         client.addEntry(buildSlotStartSlider(entries, SatchelTier.DIAMOND,
                 "satchels.configuration.diamond_position", "satchels.configuration.diamond_position.tooltip"));
+
+        // corner_menus — same list widget as allowed_menus, but client-side and ids only (no
+        // offsets). Lets the player drop the 1px corner pixel on panels that don't need it, or
+        // whose texture a resource pack has changed.
+        client.addEntry(entries
+                .startStrList(
+                        Component.translatable("satchels.configuration.corner_menus"),
+                        SatchelsClientConfig.getCornerMenusRaw())
+                .setDefaultValue(new ArrayList<>(SatchelsClientConfig.getDefaultCornerMenus()))
+                .setTooltip(Component.translatable("satchels.configuration.corner_menus.tooltip"))
+                .setSaveConsumer(SatchelsClientConfig::setCornerMenusRaw)
+                .build());
     }
 
     /**

@@ -175,11 +175,15 @@ public abstract class AbstractContainerScreenMixin<T extends AbstractContainerMe
         satchels$screenWithSatchel.renderSatchelInventory(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight, forceHidden);
         guiGraphics.disableScissor();
 
-        // Second, always-on scissor pass for the row's corner "tuck" pixel — see
+        // Second scissor pass for the row's corner "tuck" pixel — see
         // ScreenWithSatchel#renderSatchelInventoryCorners's javadoc. Called after the main
         // scissor is disabled, not nested: GuiGraphics' scissor stack only intersects with
         // whatever is already active, so a nested rect could never expose a pixel above it.
-        satchels$screenWithSatchel.renderSatchelInventoryCorners(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight);
+        // Only runs for menus listed in the client's corner_menus: not every panel has a notch
+        // at that spot, and a resource pack that re-textures a menu can remove it.
+        if (SatchelsClientConfig.isCornerEnabled(location)) {
+            satchels$screenWithSatchel.renderSatchelInventoryCorners(guiGraphics, this.leftPos + offset.getA(), this.topPos + offset.getB(), this.imageHeight);
+        }
 
         int rowOffset = (int) satchels$screenWithSatchel.getInventoryYOffset();
         for (Slot slot : this.menu.slots) {
