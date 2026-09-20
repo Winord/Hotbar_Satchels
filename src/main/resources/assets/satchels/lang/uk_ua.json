@@ -17,7 +17,7 @@
   "satchels.configuration.client": "Клієнт",
   "satchels.configuration.corner_menus": "Меню з Кутовим Пікселем Сатчела",
   "satchels.configuration.corner_menus.tooltip": "Меню, у яких ряд Сатчела малює свій 1-піксельний кут, що добудовує рамку панелі. Приберіть меню зі списку, якщо піксель там виглядає зайвим, наприклад коли ресурс-пак змінює текстуру меню. Один ID меню на рядок, наприклад minecraft:furnace.",
-  "satchels.configuration.diamond_position": "Позиція Діманатового Сатчела",
+  "satchels.configuration.diamond_position": "Позиція Діаманатового Сатчела",
   "satchels.configuration.diamond_position.tooltip": "Слот хотбару, з якого починається Діамантовий Сатчел.",
   "satchels.configuration.gameplay": "Ігровий процес",
   "satchels.configuration.golden_position": "Позиція Золотого Сатчела",
